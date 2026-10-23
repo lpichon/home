@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Circuit Temporel - Retour vers le Futur</title>
+  <!-- Police style 7 Segments Digitales -->
+  <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0d0d0d;
+      --panel-bg: #1c1d22;
+      --panel-border: #383a42;
+      --red-glow: #ff2a2a;
+      --green-glow: #00ff66;
+      --orange-glow: #ff9900;
+      --yellow-glow: #ffcc00;
+      --cyan-glow: #00e5ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Arial Black', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .time-circuits {
+      background: var(--panel-bg);
+      border: 6px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 25px;
+      width: 100%;
+      max-width: 720px;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Boîtier de chaque rangée */
+    .display-row {
+      background: #08080a;
+      border: 4px solid #2a2b30;
+      border-radius: 8px;
+      padding: 15px 20px;
+      position: relative;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.9);
+    }
+
+    .row-title {
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 8px;
+      background: #111;
+      padding: 3px 10px;
+      border-radius: 4px;
+      display: inline-block;
+      border: 1px solid #333;
+    }
+
+    /* Couleurs des étiquettes */
+    .row-present .row-title { color: var(--green-glow); border-color: var(--green-glow); }
+    .row-converter .row-title { color: var(--orange-glow); border-color: var(--orange-glow); }
+    .row-unix .row-title { color: var(--cyan-glow); border-color: var(--cyan-glow); }
+
+    /* Affichage Style 7-Segments */
+    .digital-readout {
+      font-family: 'Digital-7 Mono', monospace;
+      font-size: 2.8rem;
+      text-align: center;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px currentColor;
+    }
+
+    .green-display { color: var(--green-glow); }
+    .orange-display { color: var(--orange-glow); }
+    .red-display { color: var(--red-glow); }
+    .cyan-display { color: var(--cyan-glow); }
+
+    .live-unix-container {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px dashed #222;
+      font-family: 'Digital-7 Mono', monospace;
+    }
+
+    .live-unix-box {
+      text-align: center;
+    }
+
+    .live-unix-box .label {
+      font-size: 0.7rem;
+      color: var(--yellow-glow);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .live-unix-box .value {
+      font-size: 1.5rem;
+    }
+
+    /* Formulaire de conversion */
+    .converter-inputs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .input-group label {
+      font-size: 0.7rem;
+      color: var(--yellow-glow);
+      letter-spacing: 1px;
+    }
+
+    .input-group input {
+      background: #000;
+      border: 2px solid #444;
+      color: var(--orange-glow);
+      font-family: 'Digital-7 Mono', monospace;
+      font-size: 1.6rem;
+      padding: 5px 6px;
+      border-radius: 4px;
+      outline: none;
+      text-align: right;
+      box-shadow: inset 0 0 5px rgba(255, 153, 0, 0.3);
+      width: 100%;
+    }
+
+    .input-group input:focus {
+      border-color: var(--orange-glow);
+      box-shadow: 0 0 8px var(--orange-glow);
+    }
+
+    .unix-input input {
+      color: var(--cyan-glow);
+      box-shadow: inset 0 0 5px rgba(0, 229, 255, 0.3);
+    }
+
+    .unix-input input:focus {
+      border-color: var(--cyan-glow);
+      box-shadow: 0 0 8px var(--cyan-glow);
+    }
+
+    /* Masquer les flèches sur les champs numéros */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] { -moz-appearance: textfield; }
+
+    /* Grille des résultats */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      background: #000;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #222;
+    }
+
+    .result-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .result-item .label {
+      font-size: 0.6rem;
+      color: #888;
+      margin-bottom: 2px;
+    }
+
+    .result-item .value {
+      font-family: 'Digital-7 Mono', monospace;
+      font-size: 1.4rem;
+      color: var(--red-glow);
+      text-shadow: 0 0 8px var(--red-glow);
+      word-break: break-all;
+    }
+
+    .date-converted {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 1rem;
+      color: var(--yellow-glow);
+      font-family: 'Digital-7 Mono', monospace;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="time-circuits">
+    
+    <!-- TEMPS PRÉSENT & UNIX EN LIVE -->
+    <div class="display-row row-present">
+      <div style="text-align: center;">
+        <span class="row-title">PRESENT TIME (TEMPS PRÉSENT)</span>
+      </div>
+      <div id="present-time" class="digital-readout green-display">
+        00.00.0000 00:00:00
+      </div>
+      
+      <!-- Affichage Unix en Direct -->
+      <div class="live-unix-container">
+        <div class="live-unix-box">
+          <span class="label">UNIX LIVE (SEC)</span>
+          <span id="live-unix-sec" class="value cyan-display">0000000000</span>
+        </div>
+        <div class="live-unix-box">
+          <span class="label">UNIX LIVE (MS)</span>
+          <span id="live-unix-ms" class="value cyan-display">0000000000000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONVERTISSEUR UNIX -->
+    <div class="display-row row-unix">
+      <div style="text-align: center;">
+        <span class="row-title">CONVERTISSEUR UNIX TIMESTAMP</span>
+      </div>
+
+      <div class="converter-inputs" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="input-group unix-input">
+          <label for="input-unix">UNIX TIMESTAMP (SECONDES)</label>
+          <input type="number" id="input-unix" placeholder="ex: 1700000000">
+        </div>
+        <div class="input-group unix-input">
+          <label for="input-unix-ms">UNIX (MS)</label>
+          <input type="number" id="input-unix-ms" placeholder="ex: 1700000000000">
+        </div>
+      </div>
+
+      <div class="date-converted">
+        DATE ISO: <span id="unix-date-result" class="cyan-display">--</span>
+      </div>
+    </div>
+
+    <!-- CONVERTISSEUR TEMPOREL CLASSIQUE -->
+    <div class="display-row row-converter">
+      <div style="text-align: center;">
+        <span class="row-title">DURÉE (HEURES / MIN / SEC / MS)</span>
+      </div>
+
+      <!-- Saisie des valeurs -->
+      <div class="converter-inputs">
+        <div class="input-group">
+          <label for="input-hrs">heures</label>
+          <input type="number" id="input-hrs" placeholder="0" min="0">
+        </div>
+        <div class="input-group">
+          <label for="input-min">min</label>
+          <input type="number" id="input-min" placeholder="0" min="0">
+        </div>
+        <div class="input-group">
+          <label for="input-sec">sec</label>
+          <input type="number" id="input-sec" placeholder="0" min="0">
+        </div>
+        <div class="input-group">
+          <label for="input-ms">ms</label>
+          <input type="number" id="input-ms" placeholder="0" min="0">
+        </div>
+      </div>
+
+      <!-- Résultat de la conversion -->
+      <div class="results-grid">
+        <div class="result-item">
+          <span class="label">TOTAL HEURES</span>
+          <span id="res-hrs" class="value">0.00</span>
+        </div>
+        <div class="result-item">
+          <span class="label">TOTAL MIN</span>
+          <span id="res-min" class="value">0.00</span>
+        </div>
+        <div class="result-item">
+          <span class="label">TOTAL SEC</span>
+          <span id="res-sec" class="value">0.00</span>
+        </div>
+        <div class="result-item">
+          <span class="label">TOTAL MS</span>
+          <span id="res-ms" class="value">0</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // 1. HORLOGE TEMPS PRÉSENT & UNIX EN LIVE
+    const presentTimeEl = document.getElementById('present-time');
+    const liveUnixSecEl = document.getElementById('live-unix-sec');
+    const liveUnixMsEl = document.getElementById('live-unix-ms');
+
+    function updateLiveClock() {
+      const now = new Date();
+      
+      // Date et Heure standard
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+
+      presentTimeEl.textContent = `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
+      
+      // Unix Timestamp Live
+      const nowMs = now.getTime();
+      liveUnixMsEl.textContent = nowMs;
+      liveUnixSecEl.textContent = Math.floor(nowMs / 1000);
+    }
+
+    setInterval(updateLiveClock, 50);
+    updateLiveClock();
+
+    // 2. ÉLÉMENTS DU DOM POUR LES CONVERTISSEURS
+    const inHrs = document.getElementById('input-hrs');
+    const inMin = document.getElementById('input-min');
+    const inSec = document.getElementById('input-sec');
+    const inMs = document.getElementById('input-ms');
+
+    const inUnix = document.getElementById('input-unix');
+    const inUnixMs = document.getElementById('input-unix-ms');
+
+    const resHrs = document.getElementById('res-hrs');
+    const resMin = document.getElementById('res-min');
+    const resSec = document.getElementById('res-sec');
+    const resMs = document.getElementById('res-ms');
+    const unixDateResult = document.getElementById('unix-date-result');
+
+    // 3. CONVERSION DE DURÉE (HEURES / MIN / SEC / MS)
+    function calculateTime() {
+      const hrs = parseFloat(inHrs.value) || 0;
+      const min = parseFloat(inMin.value) || 0;
+      const sec = parseFloat(inSec.value) || 0;
+      const ms = parseFloat(inMs.value) || 0;
+
+      const totalMs = (hrs * 3600 * 1000) + (min * 60 * 1000) + (sec * 1000) + ms;
+      const totalSec = totalMs / 1000;
+      const totalMin = totalSec / 60;
+      const totalHrs = totalMin / 60;
+
+      resMs.textContent = Math.round(totalMs).toLocaleString('fr-FR');
+      resSec.textContent = totalSec.toFixed(3);
+      resMin.textContent = totalMin.toFixed(3);
+      resHrs.textContent = totalHrs.toFixed(4);
+    }
+
+    // 4. CONVERSION UNIX TIMESTAMP MANUELLE
+    function calculateUnixFromSec() {
+      const secVal = parseFloat(inUnix.value);
+      if (!isNaN(secVal)) {
+        inUnixMs.value = Math.round(secVal * 1000);
+        const date = new Date(secVal * 1000);
+        unixDateResult.textContent = date.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+      } else {
+        inUnixMs.value = '';
+        unixDateResult.textContent = '--';
+      }
+    }
+
+    function calculateUnixFromMs() {
+      const msVal = parseFloat(inUnixMs.value);
+      if (!isNaN(msVal)) {
+        inUnix.value = Math.floor(msVal / 1000);
+        const date = new Date(msVal);
+        unixDateResult.textContent = date.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+      } else {
+        inUnix.value = '';
+        unixDateResult.textContent = '--';
+      }
+    }
+
+    // Écouteurs d'événements
+    inHrs.addEventListener('input', calculateTime);
+    inMin.addEventListener('input', calculateTime);
+    inSec.addEventListener('input', calculateTime);
+    inMs.addEventListener('input', calculateTime);
+
+    inUnix.addEventListener('input', calculateUnixFromSec);
+    inUnixMs.addEventListener('input', calculateUnixFromMs);
+  </script>
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="3cd315c6-4ede-45a7-85b6-b011657e23fc"></script>
+
+</body>
+</html>

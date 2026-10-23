@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roue de la Chance</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: #f0f2f5;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: #2c3e50;
+      text-align: center;
+    }
+
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+      max-width: 1000px;
+      width: 100%;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    /* Section Formulaire et Liste */
+    .panel {
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      flex: 1 1 320px;
+      max-width: 400px;
+    }
+
+    .form-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 15px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      outline: none;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: #3498db;
+    }
+
+    button {
+      padding: 10px 18px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    .word-list {
+      list-style: none;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      border-radius: 6px;
+    }
+
+    .word-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .word-item:last-child {
+      border-bottom: none;
+    }
+
+    .btn-remove {
+      background: #e74c3c;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    .btn-remove:hover {
+      background: #c0392b;
+    }
+
+    /* Section Roue */
+    .wheel-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .wheel-wrapper {
+      position: relative;
+      width: 350px;
+      height: 350px;
+    }
+
+    /* Indicateur / Flèche */
+    .arrow {
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-top: 25px solid #e74c3c;
+      z-index: 10;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    #spinBtn {
+      margin-top: 25px;
+      padding: 12px 30px;
+      font-size: 1.1rem;
+      background-color: #2ecc71;
+    }
+
+    #spinBtn:hover {
+      background-color: #27ae60;
+    }
+
+    #spinBtn:disabled {
+      background-color: #bdc3c7;
+      cursor: not-allowed;
+    }
+
+    /* Modale / Annonce du Gagnant */
+    .winner-banner {
+      margin-top: 20px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #2c3e50;
+      min-height: 30px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Roue de la Chance</h1>
+
+  <div class="container">
+    <!-- Panneau de gestion des mots -->
+    <div class="panel">
+      <h2>Ajouter des options</h2>
+      <br>
+      <form id="wordForm" class="form-group">
+        <input type="text" id="wordInput" placeholder="Entrez un mot..." required autocomplete="off">
+        <button type="submit">Ajouter</button>
+      </form>
+      
+      <ul id="wordList" class="word-list"></ul>
+    </div>
+
+    <!-- Panneau de la Roue -->
+    <div class="wheel-section">
+      <div class="wheel-wrapper">
+        <div class="arrow"></div>
+        <canvas id="wheelCanvas" width="350" height="350"></canvas>
+      </div>
+      
+      <button id="spinBtn">Lancer la roue !</button>
+      <div id="winnerBanner" class="winner-banner"></div>
+    </div>
+  </div>
+
+  <script>
+    // Palette de couleurs pour la roue
+    const colors = [
+      '#f39c12', '#e74c3c', '#9b59b6', '#3498db', 
+      '#2ecc71', '#1abc9c', '#e67e22', '#34495e'
+    ];
+
+    // Liste initiale des mots
+    let words = ['Papa', 'Maman', 'Rapha', 'Alex'];
+    const canvas = document.getElementById('wheelCanvas');
+    const ctx = canvas.getContext('2d');
+    const wordForm = document.getElementById('wordForm');
+    const wordInput = document.getElementById('wordInput');
+    const wordList = document.getElementById('wordList');
+    const spinBtn = document.getElementById('spinBtn');
+    const winnerBanner = document.getElementById('winnerBanner');
+
+    let currentAngle = 0;
+    let isSpinning = false;
+
+    // Dessine la roue sur le Canvas
+    function drawWheel() {
+      const numSegments = words.length;
+      const radius = canvas.width / 2;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (numSegments === 0) {
+        // Roue vide
+        ctx.beginPath();
+        ctx.arc(radius, radius, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ccc';
+        ctx.fill();
+        ctx.fillStyle = '#666';
+        ctx.font = '16px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText('Ajoutez au moins 1 mot', radius, radius);
+        return;
+      }
+
+      const anglePerSegment = (2 * Math.PI) / numSegments;
+
+      for (let i = 0; i < numSegments; i++) {
+        const startAngle = currentAngle + i * anglePerSegment;
+        const endAngle = startAngle + anglePerSegment;
+
+        // Dessin du quartier
+        ctx.beginPath();
+        ctx.moveTo(radius, radius);
+        ctx.arc(radius, radius, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+
+        // Ajout du texte
+        ctx.save();
+        ctx.translate(radius, radius);
+        ctx.rotate(startAngle + anglePerSegment / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 15px Segoe UI';
+        ctx.fillText(words[i], radius - 20, 5);
+        ctx.restore();
+      }
+
+      // Cercle central
+      ctx.beginPath();
+      ctx.arc(radius, radius, 25, 0, 2 * Math.PI);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#ddd';
+      ctx.stroke();
+    }
+
+    // Met à jour la liste affichée dans le panneau
+    function updateWordListUI() {
+      wordList.innerHTML = '';
+      words.forEach((word, index) => {
+        const li = document.createElement('li');
+        li.className = 'word-item';
+        li.innerHTML = `
+          <span>${word}</span>
+          <button class="btn-remove" onclick="removeWord(${index})">Supprimer</button>
+        `;
+        wordList.appendChild(li);
+      });
+      spinBtn.disabled = words.length === 0 || isSpinning;
+      drawWheel();
+    }
+
+    // Ajouter un mot via le formulaire
+    wordForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newWord = wordInput.value.trim();
+      if (newWord) {
+        words.push(newWord);
+        wordInput.value = '';
+        winnerBanner.textContent = '';
+        updateWordListUI();
+      }
+    });
+
+    // Supprimer un mot
+    window.removeWord = function(index) {
+      if (isSpinning) return;
+      words.splice(index, 1);
+      winnerBanner.textContent = '';
+      updateWordListUI();
+    };
+
+    // Lancer le tirage au sort
+    spinBtn.addEventListener('click', () => {
+      if (isSpinning || words.length === 0) return;
+
+      isSpinning = true;
+      spinBtn.disabled = true;
+      winnerBanner.textContent = 'Tirage en cours...';
+
+      // Nombre de tours complets (min 5, max 8) + angle aléatoire
+      const totalDegrees = 360 * (5 + Math.floor(Math.random() * 4)) + Math.random() * 360;
+      const totalRotation = (totalDegrees * Math.PI) / 180;
+      
+      const duration = 4000; // Durée de la rotation en ms
+      const startTime = performance.now();
+      const startAngle = currentAngle;
+
+      function animate(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Effet de décélération (cubic ease-out)
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        
+        currentAngle = startAngle + totalRotation * easeOut;
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          isSpinning = false;
+          spinBtn.disabled = false;
+          determineWinner();
+        }
+      }
+
+      requestAnimationFrame(animate);
+    });
+
+    // Déterminer le gagnant sous la flèche (située en haut, soit à 270 deg / -90 deg)
+    function determineWinner() {
+      const numSegments = words.length;
+      const anglePerSegment = (2 * Math.PI) / numSegments;
+      
+      // Normaliser l'angle entre 0 et 2*PI
+      let normalizedAngle = (currentAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+      
+      // La flèche est située en haut (3 * Math.PI / 2)
+      let arrowAngle = (3 * Math.PI / 2);
+      
+      // Calcul du segment sous la flèche
+      let relativeAngle = (arrowAngle - normalizedAngle + 2 * Math.PI) % (2 * Math.PI);
+      let winningIndex = Math.floor(relativeAngle / anglePerSegment);
+
+      winnerBanner.textContent = `🎉 Le gagnant est : ${words[winningIndex]} !`;
+    }
+
+    // Initialisation
+    updateWordListUI();
+  </script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="3cd315c6-4ede-45a7-85b6-b011657e23fc"></script>
+</body>
+</html>

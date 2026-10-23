@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recherche de Films</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #141414;
+            color: #ffffff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #e50914;
+        }
+
+        /* Formulaire */
+        .search-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .search-form input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background-color: #222;
+            color: white;
+            font-size: 16px;
+        }
+
+        .search-form button {
+            padding: 12px 25px;
+            background-color: #e50914;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .search-form button:hover {
+            background-color: #b80710;
+        }
+
+        /* Clé API Input */
+        .api-key-container {
+            margin-bottom: 15px;
+        }
+
+        .api-key-container input {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: #222;
+            border: 1px solid #444;
+            color: #aaa;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* Résultats */
+        .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .movie-card {
+            display: flex;
+            background-color: #1f1f1f;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .movie-poster {
+            width: 180px;
+            min-width: 180px;
+            background-color: #333;
+            object-fit: cover;
+        }
+
+        .movie-info {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .movie-title {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .movie-meta {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .rating {
+            background-color: #e50914;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .movie-overview {
+            line-height: 1.5;
+            color: #ddd;
+            font-size: 14px;
+        }
+
+        .error-message {
+            color: #ff4d4d;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .movie-card {
+                flex-direction: column;
+            }
+            .movie-poster {
+                width: 100%;
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>CinéSearch</h1>
+
+        <!-- Emplacement pour la clé API -->
+        <div class="api-key-container">
+            <input type="text" id="apiKey" placeholder="Entrez votre clé API TMDb (v3)...">
+        </div>
+
+        <!-- Formulaire de recherche -->
+        <form class="search-form" id="searchForm">
+            <input type="text" id="movieTitle" placeholder="Entrez le titre d'un film..." required>
+            <button type="submit">Rechercher</button>
+        </form>
+
+        <!-- Zone des résultats -->
+        <div id="results" class="results-container"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://api.themoviedb.org/3';
+        const IMAGE_BASE_URL = 'https://image.tmdb.org/tpb/t/p/w500';
+
+        const searchForm = document.getElementById('searchForm');
+        const movieTitleInput = document.getElementById('movieTitle');
+        const apiKeyInput = document.getElementById('apiKey');
+        const resultsContainer = document.getElementById('results');
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const query = movieTitleInput.value.trim();
+            const apiKey = apiKeyInput.value.trim();
+
+            if (!apiKey) {
+                showError('Veuillez entrer votre clé API TMDb ci-dessus.');
+                return;
+            }
+
+            if (!query) return;
+
+            resultsContainer.innerHTML = '<p style="text-align:center;">Recherche en cours...</p>';
+
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=fr-FR`
+                );
+
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la requête API (vérifiez votre clé API)');
+                }
+
+                const data = await response.json();
+                displayMovies(data.results);
+            } catch (error) {
+                showError(error.message);
+            }
+        });
+
+        function displayMovies(movies) {
+            resultsContainer.innerHTML = '';
+
+            if (movies.length === 0) {
+                resultsContainer.innerHTML = '<p style="text-align:center;">Aucun film trouvé.</p>';
+                return;
+            }
+
+            movies.forEach(movie => {
+                const card = document.createElement('div');
+                card.className = 'movie-card';
+
+                // Gestion de l'image manquante
+                const posterPath = movie.poster_path 
+                    ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` 
+                    : 'https://via.placeholder.com/500x750?text=Pas+d%27affiche';
+
+                // Formatage de la date
+                const releaseYear = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
+                
+                // Formatage de la note (sur 10)
+                const rating = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
+
+                card.innerHTML = `
+                    <img class="movie-poster" src="${posterPath}" alt="${movie.title}">
+                    <div class="movie-info">
+                        <div class="movie-title">${movie.title}</div>
+                        <div class="movie-meta">
+                            <span class="rating">★ ${rating}/10</span>
+                            <span>Année : ${releaseYear}</span>
+                        </div>
+                        <p class="movie-overview">${movie.overview || 'Aucun résumé disponible pour ce film.'}</p>
+                    </div>
+                `;
+
+                resultsContainer.appendChild(card);
+            });
+        }
+
+        function showError(message) {
+            resultsContainer.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+    </script>
+</body>
+</html>

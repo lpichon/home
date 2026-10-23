@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>JSON Password API</title>
+</head>
+<body>
+    <script>
+        function generatePassword() {
+            const urlParams = new URLSearchParams(window.location.search);
+
+            const getBoolParam = (paramName, defaultValue) => {
+                if (!urlParams.has(paramName)) return defaultValue;
+                return urlParams.get(paramName) === 'true';
+            };
+
+            const lengthParam = urlParams.get('longeur') || urlParams.get('longueur');
+            const length = parseInt(lengthParam, 10) || 20;
+
+            const useMin = getBoolParam('min', true);
+            const useMaj = getBoolParam('maj', true);
+            const useChiffre = getBoolParam('chiffre', true);
+            const useSpecial = getBoolParam('special', false);
+
+            const charSets = {
+                lowercase: 'abcdefghijklmnopqrstuvwxyz',
+                uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+                numbers: '0123456789',
+                special: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+            };
+
+            let availableChars = '';
+            if (useMin) availableChars += charSets.lowercase;
+            if (useMaj) availableChars += charSets.uppercase;
+            if (useChiffre) availableChars += charSets.numbers;
+            if (useSpecial) availableChars += charSets.special;
+
+            let password = '';
+            let error = null;
+
+            if (availableChars.length === 0) {
+                error = "Aucun jeu de caractères sélectionné.";
+            } else {
+                const array = new Uint32Array(length);
+                window.crypto.getRandomValues(array);
+                for (let i = 0; i < length; i++) {
+                    password += availableChars[array[i] % availableChars.length];
+                }
+            }
+
+            const responseData = error ? {
+                status: "error",
+                message: error
+            } : {
+                status: "success",
+                password: password,
+                length: length,
+                options: {
+                    min: useMin,
+                    maj: useMaj,
+                    chiffre: useChiffre,
+                    special: useSpecial
+                }
+            };
+
+            // Écrit uniquement le texte JSON brut dans la page
+            document.body.innerHTML = '<pre>' + JSON.stringify(responseData, null, 2) + '</pre>';
+        }
+
+        generatePassword();
+    </script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="3cd315c6-4ede-45a7-85b6-b011657e23fc"></script>
+
+</body>
+</html>

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radio Player DAB+</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(180deg, #000000  0%, #000000 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .player-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 30px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    .badge-dab {
+      display: inline-block;
+      background-color: #e51323;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 4px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+
+    /* Style du menu déroulant */
+    .station-select {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 10px 15px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      outline: none;
+      cursor: pointer;
+      margin-bottom: 15px;
+      text-align-last: center;
+    }
+
+    .station-select option {
+      background-color: #1f1f2e;
+      color: #ffffff;
+    }
+
+    .station-subtitle {
+      font-size: 0.9rem;
+      color: #aaaaaa;
+      margin-bottom: 15px;
+    }
+
+    /* Zone d'affichage du titre/artiste */
+    .now-playing {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 20px;
+      min-height: 58px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .track-title {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-artist {
+      font-size: 0.85rem;
+      color: #e51323;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #888888;
+      margin-bottom: 25px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #555555;
+      transition: background-color 0.3s ease;
+    }
+
+    .dot.active {
+      background-color: #00ff66;
+      box-shadow: 0 0 10px #00ff66;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 25px;
+    }
+
+    .play-btn {
+      background-color: #e51323;
+      border: none;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      color: #ffffff;
+      font-size: 1.5rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+      box-shadow: 0 6px 20px rgba(229, 19, 35, 0.4);
+    }
+
+    .play-btn:hover {
+      transform: scale(1.05);
+      background-color: #ff1a2d;
+    }
+
+    .play-btn:active {
+      transform: scale(0.95);
+    }
+
+    .volume-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px 15px;
+      border-radius: 30px;
+    }
+
+    .volume-icon {
+      font-size: 1rem;
+      color: #aaaaaa;
+      width: 20px;
+    }
+
+    .volume-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 5px;
+      border-radius: 5px;
+      background: #444444;
+      outline: none;
+    }
+
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #ffffff;
+      cursor: pointer;
+    }
+
+    .volume-slider::-moz-range-thumb {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #ffffff;
+      cursor: pointer;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="player-card">
+    <span class="badge-dab">DAB+ Direct</span>
+    
+    <!-- Liste déroulante des stations -->
+    <select id="stationSelect" class="station-select"></select>
+    
+    <p class="station-subtitle" id="stationSubtitle">Le Grand Mix</p>
+
+    <!-- Zone Titre & Artiste -->
+    <div class="now-playing">
+      <div class="track-title" id="trackTitle">--</div>
+      <div class="track-artist" id="trackArtist">--</div>
+    </div>
+
+    <div class="status-indicator">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Arrêté</span>
+    </div>
+
+    <div class="controls">
+      <button class="play-btn" id="playBtn" aria-label="Lancer la lecture">
+        <span id="playIcon">▶</span>
+      </button>
+    </div>
+
+    <div class="volume-container">
+      <span class="volume-icon" id="volumeIcon">🔊</span>
+      <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.01" value="0.8">
+    </div>
+  </div>
+
+  <audio id="audioPlayer" preload="none"></audio>
+
+  <script>
+    // AJOUTER / MODIFIER VOS STATIONS ICI
+    // Remarque: metadataUrl nécessite une API qui renvoie du JSON et autorise les requêtes CORS.
+    const stations = [
+      {
+        id: 'nova',
+        name: 'Radio Nova',
+        subtitle: 'Le Grand Mix',
+        streamUrl: 'https://novazz.ice.infomaniak.ch/novazz-128.mp3',
+        metadataUrl: 'https://novazz.ice.infomaniak.ch/bip/nova.json'
+      },
+      {
+        id: 'funradio',
+        name: 'Fun Radio',
+        subtitle: 'fun',
+        streamUrl: 'https://streaming-ice.audiomeans.fr/rtl/feed-funradio-mp3-128?aw_0_1st.broadcast_type=streaming&aw_0_1st.source_type=external&aw_0_1st.platform=external&aw_0_1st.media_category=fm&aw_0_1st.station=fun&aw_0_1st.program=fun&listen=webCwsBCggNCQgLDQUGBAcGBg',
+        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+      },
+      {
+        id: 'nrj',
+        name: 'NRJ Radio',
+        subtitle: 'nrf',
+        streamUrl: 'https://n22-eu.rcs.revma.com/xh00fwuptg0uv?rj-ttl=5&rj-tok=AAABn_FuqRkAkKF1HnvVUTDjqA',
+        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+      },
+      {
+        id: 'rire-et-chansons',
+        name: 'Rire et Chansons',
+        subtitle: 'Rire-et-Chansons-France',
+        streamUrl: 'https://streaming.nrjaudio.fm/ousguym4z85f?origine=fluxradios',
+        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+      },
+      {
+        id: 'france-info',
+        name: 'France Info',
+        subtitle: 'France-Info-France',
+        streamUrl: 'https://icecast.radiofrance.fr/franceinfo-midfi.mp3',
+        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+      },
+      
+      {
+        id: 'skyrock',
+        name: 'Skyrock',
+        subtitle: 'Skyrock-France',
+        streamUrl: 'https://icecast.skyrock.net/s/natio_mp3_128k',
+        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+      },
+      {
+        id: 'ouifm',
+        name: 'Oui FM',
+        subtitle: 'Oui-FM-France',
+        streamUrl: 'https://ouifm.ice.infomaniak.ch/ouifm-high.mp3',
+        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+      },
+      {
+        id: 'fg',
+        name: 'FG',
+        subtitle: 'FG-Dance-France',
+        streamUrl: 'https://n25-eu.rcs.revma.com/zfad8vm4srhvv?rj-ttl=5&rj-tok=AAABn_Fw6L8AvVogWBFEQIIytA',
+        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+      },
+      {
+        id: 'radiocontact',
+        name: 'Radio Contact',
+        subtitle: 'Contact',
+        streamUrl: 'https://radiocontact.ice.infomaniak.ch/radiocontact-mp3-192.mp3',
+        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+      },
+      
+      {
+        id: 'fip',
+        name: 'FIP',
+        subtitle: 'La radio eclectique',
+        streamUrl: 'https://icecast.radiofrance.fr/fip-midfi.mp3',
+        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+      }
+    ];
+
+    const audio = document.getElementById('audioPlayer');
+    const playBtn = document.getElementById('playBtn');
+    const playIcon = document.getElementById('playIcon');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const volumeSlider = document.getElementById('volumeSlider');
+    const volumeIcon = document.getElementById('volumeIcon');
+    const stationSelect = document.getElementById('stationSelect');
+    const stationSubtitle = document.getElementById('stationSubtitle');
+    const trackTitle = document.getElementById('trackTitle');
+    const trackArtist = document.getElementById('trackArtist');
+
+    let isPlaying = false;
+    let currentStation = stations[0];
+    let metadataTimer = null;
+
+    // Initialisation de la liste déroulante
+    function initStations() {
+      stations.forEach((station, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = station.name;
+        stationSelect.appendChild(option);
+      });
+      updateStationInfo(stations[0]);
+    }
+
+    // Mise à jour des infos de la station sélectionnée
+    function updateStationInfo(station) {
+      currentStation = station;
+      stationSubtitle.textContent = station.subtitle;
+      trackTitle.textContent = '--';
+      trackArtist.textContent = '--';
+      fetchMetadata();
+    }
+
+    // Récupération des métadonnées (Titre / Artiste)
+    function fetchMetadata() {
+      if (!currentStation.metadataUrl) {
+        trackTitle.textContent = 'Information non disponible';
+        trackArtist.textContent = '';
+        return;
+      }
+
+      fetch(currentStation.metadataUrl)
+        .then(response => response.json())
+        .then(data => {
+          // Structure d'exemple adaptée pour l'API Infomaniak / Nova
+          if (data && data.song) {
+            trackTitle.textContent = data.song.title || 'Titre inconnu';
+            trackArtist.textContent = data.song.artist || 'Artiste inconnu';
+          } else if (data && data.title) {
+            trackTitle.textContent = data.title;
+            trackArtist.textContent = data.artist || '';
+          }
+        })
+        .catch(err => {
+          console.warn('Impossible de récupérer les métadonnées :', err);
+        });
+    }
+
+    // Démarrer la mise à jour périodique des métadonnées (toutes les 10 secondes)
+    function startMetadataPolling() {
+      stopMetadataPolling();
+      fetchMetadata();
+      metadataTimer = setInterval(fetchMetadata, 10000);
+    }
+
+    function stopMetadataPolling() {
+      if (metadataTimer) clearInterval(metadataTimer);
+    }
+
+    // Gestion de la sélection de station
+    stationSelect.addEventListener('change', (e) => {
+      const selectedIndex = e.target.value;
+      updateStationInfo(stations[selectedIndex]);
+
+      if (isPlaying) {
+        audio.pause();
+        audio.src = currentStation.streamUrl;
+        audio.load();
+        audio.play().then(() => {
+          updateUI(true);
+        }).catch(err => {
+          console.error('Erreur de lecture :', err);
+          updateUI(false);
+        });
+      }
+    });
+
+    // Lecture / Pause
+    playBtn.addEventListener('click', () => {
+      if (isPlaying) {
+        audio.pause();
+        audio.src = '';
+        updateUI(false);
+        stopMetadataPolling();
+      } else {
+        audio.src = currentStation.streamUrl;
+        audio.load();
+        statusText.textContent = 'Connexion...';
+        audio.play().then(() => {
+          updateUI(true);
+          startMetadataPolling();
+        }).catch(err => {
+          console.error('Erreur de lecture :', err);
+          statusText.textContent = 'Erreur de connexion';
+          updateUI(false);
+        });
+      }
+    });
+
+    function updateUI(playing) {
+      isPlaying = playing;
+      if (playing) {
+        playIcon.textContent = '❚❚';
+        statusDot.classList.add('active');
+        statusText.textContent = 'En direct';
+      } else {
+        playIcon.textContent = '▶';
+        statusDot.classList.remove('active');
+        statusText.textContent = 'Arrêté';
+      }
+    }
+
+    // Gestion du volume
+    volumeSlider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      audio.volume = val;
+      if (val == 0) {
+        volumeIcon.textContent = '🔇';
+      } else if (val < 0.5) {
+        volumeIcon.textContent = '🔉';
+      } else {
+        volumeIcon.textContent = '🔊';
+      }
+    });
+
+    // Arrêt lors du masquage si pas en cours de lecture
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && !isPlaying) {
+        audio.src = '';
+      }
+    });
+
+    // Initialisation
+    initStations();
+  </script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="3cd315c6-4ede-45a7-85b6-b011657e23fc"></script>
+</body>
+</html>

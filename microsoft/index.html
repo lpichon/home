@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<!--
+  LECTEUR AUDIO POUR ONEDRIVE — fichier autonome (HTML + CSS + JS)
+  ======================================================================
+  AVANT DE L'UTILISER, il faut enregistrer une application dans Azure :
+
+  1. Va sur https://entra.microsoft.com (ou https://portal.azure.com,
+     rubrique "Azure Active Directory") avec ton compte Microsoft.
+  2. Menu "App registrations" (Inscriptions d'applications) → "New
+     registration" :
+     - Nom : ce que tu veux (ex: "Lecteur OneDrive")
+     - "Supported account types" : choisis "Accounts in any organizational
+       directory and personal Microsoft accounts" pour que ça marche avec
+       un compte OneDrive personnel ET/OU professionnel.
+     - "Redirect URI" : choisis la plateforme "Single-page application
+       (SPA)" et renseigne l'URL exacte depuis laquelle tu vas ouvrir ce
+       fichier (ex: https://tonpseudo.github.io/lecteur-onedrive.html).
+       file:// ne fonctionne PAS, il faut un vrai serveur (même local,
+       ex: http://localhost:5500/lecteur-onedrive.html).
+  3. Une fois créée, copie l'"Application (client) ID" affiché sur la
+     page "Overview" (aperçu) de l'inscription.
+  4. Menu "API permissions" → "Add a permission" → "Microsoft Graph" →
+     "Delegated permissions" → cherche et coche "Files.Read" → "Add
+     permissions".
+  5. Colle le Client ID copié à l'étape 3 dans le champ de configuration
+     en bas de la page une fois le fichier ouvert.
+
+  Contrairement à Google, il n'y a pas de mode "test" limité à quelques
+  comptes : une fois l'inscription créée, elle fonctionne immédiatement
+  pour n'importe quel compte Microsoft qui s'y connecte. Ce fichier ne
+  contient aucune clé secrète et peut être hébergé publiquement.
+-->
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lecteur — OneDrive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;
+    --panel:#1d1a15;
+    --panel-2:#262019;
+    --line:#332c22;
+    --text:#f2ead9;
+    --text-dim:#9c9284;
+    --accent:#d9a441;
+    --accent-dim:#8a6d2d;
+    --reel:#7a8f7a;
+    --danger:#c1584a;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+  a{color:var(--accent);}
+  ::selection{background:var(--accent);color:#15130f;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  header{
+    padding:28px 32px 18px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:20px;
+    flex-wrap:wrap;
+    border-bottom:1px solid var(--line);
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:22px;
+    margin:0;
+    letter-spacing:.2px;
+  }
+  h1 span{color:var(--accent);}
+  .status{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-dim);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--danger);}
+  .dot.on{background:#8fbf7a;}
+
+  main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    max-width:920px;
+    width:100%;
+    margin:0 auto;
+    padding:24px 32px 140px;
+  }
+
+  /* --- Configuration panel --- */
+  .config{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 22px;
+    margin-bottom:24px;
+  }
+  .config h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:15px;
+    margin:0 0 4px;
+  }
+  .config p{
+    font-size:13px;
+    color:var(--text-dim);
+    margin:0 0 14px;
+    line-height:1.5;
+  }
+  .config-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  input[type=text], input[type=search]{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:10px 12px;
+    border-radius:8px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    flex:1;
+    min-width:220px;
+  }
+  button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    border:none;
+    border-radius:8px;
+    padding:10px 18px;
+    cursor:pointer;
+    background:var(--accent);
+    color:#1a1509;
+    transition:transform .1s ease, background .15s ease;
+  }
+  button:hover{background:#e6b45a;}
+  button:active{transform:scale(.97);}
+  button.ghost{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--text);
+  }
+  button.ghost:hover{border-color:var(--accent);color:var(--accent);background:transparent;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+
+  .search-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:14px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+  .search-row input{max-width:280px;}
+  .count{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-dim);white-space:nowrap;}
+
+  .breadcrumb{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:4px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-dim);
+    margin-bottom:16px;
+  }
+  .breadcrumb button{
+    background:transparent;
+    border:none;
+    color:var(--text-dim);
+    padding:4px 6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    font-weight:400;
+    border-radius:5px;
+    cursor:pointer;
+  }
+  .breadcrumb button:hover{color:var(--accent);background:var(--panel);}
+  .breadcrumb button.current{color:var(--text);cursor:default;}
+  .breadcrumb button.current:hover{background:transparent;color:var(--text);}
+  .breadcrumb .sep{color:var(--line);}
+
+  .folder-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:11px 10px;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+    border-radius:6px;
+  }
+  .folder-row:hover{background:var(--panel);}
+  .folder-icon{color:var(--reel);flex-shrink:0;font-size:14px;width:26px;text-align:right;}
+  .folder-name{flex:1;font-size:14px;}
+  .folder-chevron{color:var(--text-dim);flex-shrink:0;}
+
+  .file-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:11px 10px;
+    border-bottom:1px solid var(--line);
+    border-radius:6px;
+  }
+  .file-row:hover{background:var(--panel);}
+  .dl-btn{
+    padding:6px 12px;
+    font-size:12px;
+    flex-shrink:0;
+  }
+
+  /* --- Track list --- */
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--text-dim);
+    font-size:14px;
+    border:1px dashed var(--line);
+    border-radius:var(--radius);
+  }
+  ul.tracks{list-style:none;margin:0;padding:0;border-top:1px solid var(--line);}
+  .track{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:11px 10px;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+    border-radius:6px;
+  }
+  .track:hover{background:var(--panel);}
+  .track.active{background:var(--panel-2);}
+  .idx{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-dim);
+    width:26px;
+    text-align:right;
+    flex-shrink:0;
+  }
+  .track.active .idx{color:var(--accent);}
+  .name{
+    flex:1;
+    font-size:14px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .track.active .name{color:var(--accent);}
+  .size{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--text-dim);
+    flex-shrink:0;
+  }
+  .eq{display:flex;align-items:flex-end;gap:2px;height:14px;width:14px;flex-shrink:0;}
+  .eq span{width:3px;background:var(--accent);border-radius:1px;animation:bounce 900ms ease-in-out infinite;}
+  .eq span:nth-child(2){animation-delay:.15s;}
+  .eq span:nth-child(3){animation-delay:.3s;}
+  @keyframes bounce{
+    0%,100%{height:3px;}
+    50%{height:14px;}
+  }
+
+  /* --- Player bar --- */
+  .player{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    background:var(--panel);
+    border-top:1px solid var(--line);
+    padding:14px 24px;
+    display:flex;
+    align-items:center;
+    gap:18px;
+    backdrop-filter:blur(6px);
+  }
+  .reel-wrap{display:flex;gap:6px;flex-shrink:0;}
+  .reel{
+    width:34px;height:34px;border-radius:50%;
+    border:2px solid var(--reel);
+    position:relative;
+    flex-shrink:0;
+  }
+  .reel::before{
+    content:"";
+    position:absolute;inset:0;margin:auto;
+    width:8px;height:8px;border-radius:50%;
+    background:var(--reel);
+  }
+  .reel.spin{animation:spin 3s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion: reduce){
+    .reel.spin{animation:none;}
+    .eq span{animation:none;height:8px;}
+  }
+
+  .now{
+    min-width:0;
+    flex-shrink:0;
+    width:180px;
+  }
+  .now .title{
+    font-size:13px;
+    font-weight:600;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .now .sub{
+    font-size:11px;
+    color:var(--text-dim);
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  .controls{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .ctrl-btn{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--text);
+    width:36px;height:36px;
+    border-radius:50%;
+    padding:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;
+  }
+  .ctrl-btn:hover{border-color:var(--accent);color:var(--accent);background:transparent;}
+  .ctrl-btn.main{
+    background:var(--accent);
+    color:#1a1509;
+    border:none;
+    width:42px;height:42px;
+  }
+  .ctrl-btn.main:hover{background:#e6b45a;}
+
+  .progress-wrap{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:120px;
+  }
+  .time{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--text-dim);
+    width:38px;
+    flex-shrink:0;
+  }
+  input[type=range]{
+    -webkit-appearance:none;
+    appearance:none;
+    flex:1;
+    height:4px;
+    background:var(--line);
+    border-radius:2px;
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:12px;height:12px;border-radius:50%;
+    background:var(--accent);
+    cursor:pointer;
+    margin-top:-4px;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:12px;height:12px;border-radius:50%;
+    background:var(--accent);border:none;cursor:pointer;
+  }
+  .volume{width:80px;flex-shrink:0;}
+
+  .msg{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    padding:8px 12px;
+    border-radius:8px;
+    margin-bottom:14px;
+  }
+  .msg.error{background:rgba(193,88,74,.15);color:#e08d80;border:1px solid rgba(193,88,74,.3);}
+  .msg.info{background:rgba(217,164,65,.1);color:var(--accent);border:1px solid rgba(217,164,65,.25);}
+
+  @media (max-width:640px){
+    header{padding:20px 18px 14px;}
+    main{padding:18px 18px 160px;}
+    .player{flex-wrap:wrap;padding:12px 16px;}
+    .now{width:auto;order:1;}
+    .reel-wrap{order:0;}
+    .controls{order:2;}
+    .progress-wrap{order:3;width:100%;}
+    .volume{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Zik <span>Drive</span></h1><a href="../google/">google Zik</a><a href="../radio/"> Radio </a>
+  <div class="status">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">non connecté</span>
+  </div>
+</header>
+
+<main>
+
+<section class="config" id="configPanel">
+  <h2>Zik Drive</h2></br>
+  <div class="config-row">
+    <input type="hidden" id="clientIdInput" value="be837dd96010a5">
+    <button id="connectBtn">Se connecter</button>
+    <button class="ghost" id="disconnectBtn" style="display:none;">Se déconnecter</button>
+  </div>
+</section>
+
+  <div id="messages"></div>
+
+  <div class="breadcrumb" id="breadcrumb" style="display:none;"></div>
+
+  <div class="search-row" id="searchRow" style="display:none;">
+    <input type="search" id="searchInput" placeholder="Filtrer par nom dans ce dossier…">
+    <span class="count" id="countText"></span>
+  </div>
+
+  <div id="listWrap"></div>
+
+</main>
+
+<div class="player" id="playerBar" style="display:none;">
+  <div class="reel-wrap">
+    <div class="reel" id="reel1"></div>
+  </div>
+  <div class="now">
+    <div class="title" id="nowTitle">—</div>
+    <div class="sub" id="nowSub">&nbsp;</div>
+  </div>
+  <div class="controls">
+    <button class="ctrl-btn" id="prevBtn" title="Précédent">⏮</button>
+    <button class="ctrl-btn main" id="playBtn" title="Lecture / Pause">▶</button>
+    <button class="ctrl-btn" id="nextBtn" title="Suivant">⏭</button>
+  </div>
+  <div class="progress-wrap">
+    <span class="time" id="curTime">0:00</span>
+    <input type="range" id="seekBar" min="0" max="100" value="0">
+    <span class="time" id="durTime">0:00</span>
+  </div>
+  <input type="range" class="volume" id="volumeBar" min="0" max="100" value="80" title="Volume">
+</div>
+
+<audio id="audioEl" crossorigin="anonymous"></audio>
+
+<script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  const SCOPES = ["Files.Read"];
+
+  // ---- state ----
+  let clientId = localStorage.getItem("onedrivePlayerClientId") || "";
+  let msalInstance = null;
+  let accessToken = null;
+  let allFiles = [];
+  let filteredFiles = [];
+  let currentFileId = null;
+  let currentObjectUrl = null;
+  let currentFolders = [];
+  let currentKdbxFiles = [];
+  let folderStack = [{ id: "root", name: "OneDrive" }];
+
+  // ---- dom refs ----
+  const $ = (id) => document.getElementById(id);
+  const clientIdInput = $("clientIdInput");
+  const connectBtn = $("connectBtn");
+  const disconnectBtn = $("disconnectBtn");
+  const configPanel = $("configPanel");
+  const statusDot = $("statusDot");
+  const statusText = $("statusText");
+  const messages = $("messages");
+  const breadcrumb = $("breadcrumb");
+  const searchRow = $("searchRow");
+  const searchInput = $("searchInput");
+  const countText = $("countText");
+  const listWrap = $("listWrap");
+  const playerBar = $("playerBar");
+  const reel1 = $("reel1");
+  const nowTitle = $("nowTitle");
+  const nowSub = $("nowSub");
+  const prevBtn = $("prevBtn");
+  const playBtn = $("playBtn");
+  const nextBtn = $("nextBtn");
+  const curTime = $("curTime");
+  const durTime = $("durTime");
+  const seekBar = $("seekBar");
+  const volumeBar = $("volumeBar");
+  const audioEl = $("audioEl");
+
+  clientIdInput.value = "be837dea-ba6d-431e-b6c6-3f7be96010a5";
+  audioEl.volume = 0.8;
+
+  function showMessage(text, type){
+    messages.innerHTML = `<div class="msg ${type}">${text}</div>`;
+  }
+  function clearMessage(){ messages.innerHTML = ""; }
+
+  function formatBytes(bytes){
+    if(!bytes) return "";
+    const n = Number(bytes);
+    if(n < 1024*1024) return (n/1024).toFixed(0) + " Ko";
+    return (n/(1024*1024)).toFixed(1) + " Mo";
+  }
+  function formatTime(sec){
+    if(!isFinite(sec)) return "0:00";
+    const m = Math.floor(sec/60);
+    const s = Math.floor(sec%60).toString().padStart(2,"0");
+    return `${m}:${s}`;
+  }
+  function escapeHtml(str){
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---- auth (MSAL.js) ----
+  async function ensureMsal(){
+    if(msalInstance) return;
+    msalInstance = new msal.PublicClientApplication({
+      auth: {
+        clientId: clientId,
+        authority: "https://login.microsoftonline.com/common",
+        redirectUri: window.location.href.split("#")[0]
+      },
+      cache: { cacheLocation: "localStorage" }
+    });
+    // Note : contrairement à MSAL v3, la v2 n'a pas de méthode
+    // initialize() asynchrone à appeler après la construction.
+  }
+
+  async function getToken(interactive){
+    const account = msalInstance.getActiveAccount();
+    if(!account) throw new Error("Aucun compte actif");
+    try{
+      const res = await msalInstance.acquireTokenSilent({ scopes: SCOPES, account });
+      accessToken = res.accessToken;
+      return accessToken;
+    }catch(err){
+      if(!interactive) throw err;
+      const res = await msalInstance.acquireTokenPopup({ scopes: SCOPES });
+      accessToken = res.accessToken;
+      return accessToken;
+    }
+  }
+
+  connectBtn.addEventListener("click", async () => {
+    clientId = clientIdInput.value.trim();
+    if(!clientId){
+      showMessage("Merci de renseigner un Application (client) ID avant de te connecter.", "error");
+      return;
+    }
+    localStorage.setItem("onedrivePlayerClientId", clientId);
+    clearMessage();
+    connectBtn.disabled = true;
+    try{
+      await ensureMsal();
+      const result = await msalInstance.loginPopup({ scopes: SCOPES });
+      msalInstance.setActiveAccount(result.account);
+      accessToken = result.accessToken;
+      onConnected();
+    }catch(err){
+      showMessage("Connexion refusée ou annulée : " + err.message, "error");
+    }finally{
+      connectBtn.disabled = false;
+    }
+  });
+
+  disconnectBtn.addEventListener("click", async () => {
+    try{
+      const account = msalInstance && msalInstance.getActiveAccount();
+      if(account){
+        await msalInstance.logoutPopup({ account });
+      }
+    }catch(err){ /* on nettoie l'UI même si la popup de déconnexion échoue */ }
+    accessToken = null;
+    allFiles = [];
+    filteredFiles = [];
+    currentFolders = [];
+    currentKdbxFiles = [];
+    folderStack = [{ id: "root", name: "OneDrive" }];
+    stopPlayback();
+    listWrap.innerHTML = "";
+    breadcrumb.style.display = "none";
+    searchRow.style.display = "none";
+    playerBar.style.display = "none";
+    configPanel.style.display = "block";
+    disconnectBtn.style.display = "none";
+    statusDot.classList.remove("on");
+    statusText.textContent = "non connecté";
+  });
+
+  function onConnected(){
+    statusDot.classList.add("on");
+    statusText.textContent = "connecté";
+    configPanel.style.display = "none";
+    disconnectBtn.style.display = "inline-block";
+    clearMessage();
+    folderStack = [{ id: "root", name: "OneDrive" }];
+    fetchFolder("root");
+  }
+
+  // ---- fetching folder contents (subfolders + audio files) ----
+  async function fetchFolder(folderId){
+    showMessage("Chargement du dossier…", "info");
+    searchInput.value = "";
+    let items = [];
+    try{
+      await getToken(true);
+
+      const basePath = folderId === "root"
+        ? "https://graph.microsoft.com/v1.0/me/drive/root/children"
+        : `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children`;
+
+      let nextUrl = (() => {
+        const u = new URL(basePath);
+        u.searchParams.set("$select", "id,name,size,file,folder");
+        u.searchParams.set("$top", "200");
+        return u.toString();
+      })();
+
+      while(nextUrl){
+        const res = await fetch(nextUrl, { headers: { Authorization: "Bearer " + accessToken }});
+        if(res.status === 401){
+          showMessage("Session expirée, reconnecte-toi.", "error");
+          return;
+        }
+        if(!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        items = items.concat(data.value || []);
+        nextUrl = data["@odata.nextLink"] || null;
+      }
+
+      clearMessage();
+      currentFolders = items.filter(f => f.folder);
+      currentKdbxFiles = items.filter(f => !f.folder && f.name.toLowerCase().endsWith(".kdbx"));
+      allFiles = items.filter(f => f.file && f.file.mimeType && f.file.mimeType.startsWith("audio/"));
+      filteredFiles = allFiles.slice();
+
+      breadcrumb.style.display = "flex";
+      searchRow.style.display = "flex";
+      renderBreadcrumb();
+      renderList();
+    }catch(err){
+      showMessage("Erreur lors de la récupération des fichiers : " + err.message, "error");
+    }
+  }
+
+  function renderBreadcrumb(){
+    breadcrumb.innerHTML = "";
+    folderStack.forEach((f, i) => {
+      if(i > 0){
+        const sep = document.createElement("span");
+        sep.className = "sep";
+        sep.textContent = "/";
+        breadcrumb.appendChild(sep);
+      }
+      const btn = document.createElement("button");
+      const isLast = i === folderStack.length - 1;
+      btn.className = isLast ? "current" : "";
+      btn.textContent = f.name;
+      if(!isLast){
+        btn.addEventListener("click", () => {
+          folderStack = folderStack.slice(0, i + 1);
+          fetchFolder(f.id);
+        });
+      }
+      breadcrumb.appendChild(btn);
+    });
+  }
+
+  function openFolder(folder){
+    folderStack.push({ id: folder.id, name: folder.name });
+    fetchFolder(folder.id);
+  }
+
+  searchInput.addEventListener("input", () => {
+    const q = searchInput.value.trim().toLowerCase();
+    filteredFiles = allFiles.filter(f => f.name.toLowerCase().includes(q));
+    renderList();
+  });
+
+  function renderList(){
+    countText.textContent = `${currentFolders.length} dossier${currentFolders.length>1?"s":""} · ${filteredFiles.length} morceau${filteredFiles.length>1?"x":""}${currentKdbxFiles.length ? " · " + currentKdbxFiles.length + " base" + (currentKdbxFiles.length>1?"s":"") + " KeePass" : ""}`;
+
+    listWrap.innerHTML = "";
+
+    if(currentFolders.length > 0){
+      const folderUl = document.createElement("ul");
+      folderUl.className = "tracks";
+      folderUl.style.borderTop = "1px solid var(--line)";
+      currentFolders.forEach(f => {
+        const li = document.createElement("li");
+        li.className = "folder-row";
+        li.innerHTML = `
+          <span class="folder-icon">📁</span>
+          <span class="folder-name">${escapeHtml(f.name)}</span>
+          <span class="folder-chevron">›</span>
+        `;
+        li.addEventListener("click", () => openFolder(f));
+        folderUl.appendChild(li);
+      });
+      listWrap.appendChild(folderUl);
+    }
+
+    if(currentKdbxFiles.length > 0){
+      const kdbxUl = document.createElement("ul");
+      kdbxUl.className = "tracks";
+      kdbxUl.style.borderTop = "1px solid var(--line)";
+      currentKdbxFiles.forEach(f => {
+        const li = document.createElement("li");
+        li.className = "file-row";
+        li.innerHTML = `
+          <span class="folder-icon">🔑</span>
+          <span class="folder-name">${escapeHtml(f.name)}</span>
+          <span class="size">${formatBytes(f.size)}</span>
+          <button class="ghost dl-btn" type="button">Télécharger</button>
+        `;
+        li.querySelector(".dl-btn").addEventListener("click", (e) => {
+          e.stopPropagation();
+          downloadFile(f, e.currentTarget);
+        });
+        kdbxUl.appendChild(li);
+      });
+      listWrap.appendChild(kdbxUl);
+    }
+
+    if(filteredFiles.length === 0){
+      if(currentFolders.length === 0 && currentKdbxFiles.length === 0){
+        listWrap.innerHTML = `<div class="empty">Ce dossier est vide (aucun sous-dossier, fichier audio ou base KeePass).</div>`;
+      }
+      return;
+    }
+
+    const ul = document.createElement("ul");
+    ul.className = "tracks";
+    filteredFiles.forEach((f, i) => {
+      const li = document.createElement("li");
+      li.className = "track" + (f.id === currentFileId ? " active" : "");
+      li.innerHTML = `
+        <span class="idx">${i+1}</span>
+        <span class="name">${escapeHtml(f.name)}</span>
+        ${f.id === currentFileId ? `<span class="eq"><span></span><span></span><span></span></span>` : ""}
+        <span class="size">${formatBytes(f.size)}</span>
+      `;
+      li.addEventListener("click", () => playFile(i));
+      ul.appendChild(li);
+    });
+    listWrap.appendChild(ul);
+  }
+
+  // ---- playback ----
+  // On télécharge le contenu du fichier via l'API (endpoint /content)
+  // plutôt que d'utiliser le lien direct @microsoft.graph.downloadUrl,
+  // car celui-ci peut être bloqué par certaines politiques de sécurité
+  // de compte (protection contre le téléchargement, étiquettes de
+  // confidentialité, etc.). Cette approche est un peu plus lente à
+  // démarrer (le fichier est chargé en mémoire avant lecture) mais
+  // fonctionne de façon fiable sur tous les types de comptes.
+  async function playFile(index){
+    const file = filteredFiles[index];
+    if(!file) return;
+    currentFileId = file.id;
+    playerBar.style.display = "flex";
+    nowTitle.textContent = file.name;
+    nowSub.textContent = "Chargement…";
+    renderList();
+
+    try{
+      await getToken(true);
+      const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${file.id}/content`, {
+        headers: { Authorization: "Bearer " + accessToken }
+      });
+      if(res.status === 401){
+        showMessage("Session expirée, reconnecte-toi pour continuer d'écouter.", "error");
+        nowSub.textContent = "session expirée";
+        return;
+      }
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const blob = await res.blob();
+
+      if(currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = URL.createObjectURL(blob);
+      audioEl.src = currentObjectUrl;
+      await audioEl.play();
+      nowSub.textContent = formatBytes(file.size);
+    }catch(err){
+      nowSub.textContent = "erreur de lecture";
+      showMessage("Impossible de lire ce fichier : " + err.message, "error");
+    }
+  }
+
+  function stopPlayback(){
+    audioEl.pause();
+    audioEl.removeAttribute("src");
+    if(currentObjectUrl){ URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
+    currentFileId = null;
+  }
+
+  // Télécharge un fichier quelconque (ex: base KeePass .kdbx) et
+  // déclenche l'enregistrement via le navigateur, plutôt que de tenter
+  // de le lire dans <audio>.
+  async function downloadFile(file, btn){
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "…";
+    try{
+      await getToken(true);
+      const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${file.id}/content`, {
+        headers: { Authorization: "Bearer " + accessToken }
+      });
+      if(res.status === 401){
+        showMessage("Session expirée, reconnecte-toi.", "error");
+        return;
+      }
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }catch(err){
+      showMessage("Impossible de télécharger ce fichier : " + err.message, "error");
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+
+  function currentIndex(){
+    return filteredFiles.findIndex(f => f.id === currentFileId);
+  }
+
+  prevBtn.addEventListener("click", () => {
+    const i = currentIndex();
+    if(i > 0) playFile(i-1);
+  });
+  nextBtn.addEventListener("click", () => {
+    const i = currentIndex();
+    if(i >= 0 && i < filteredFiles.length - 1) playFile(i+1);
+  });
+  audioEl.addEventListener("ended", () => {
+    const i = currentIndex();
+    if(i >= 0 && i < filteredFiles.length - 1) playFile(i+1);
+  });
+
+  playBtn.addEventListener("click", () => {
+    if(!audioEl.src) return;
+    if(audioEl.paused) audioEl.play(); else audioEl.pause();
+  });
+  audioEl.addEventListener("play", () => {
+    playBtn.textContent = "⏸";
+    reel1.classList.add("spin");
+    renderList();
+  });
+  audioEl.addEventListener("pause", () => {
+    playBtn.textContent = "▶";
+    reel1.classList.remove("spin");
+    renderList();
+  });
+
+  audioEl.addEventListener("timeupdate", () => {
+    if(!audioEl.duration) return;
+    seekBar.value = (audioEl.currentTime / audioEl.duration) * 100;
+    curTime.textContent = formatTime(audioEl.currentTime);
+    durTime.textContent = formatTime(audioEl.duration);
+  });
+  seekBar.addEventListener("input", () => {
+    if(!audioEl.duration) return;
+    audioEl.currentTime = (seekBar.value/100) * audioEl.duration;
+  });
+  volumeBar.addEventListener("input", () => {
+    audioEl.volume = volumeBar.value/100;
+  });
+
+})();
+</script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="3cd315c6-4ede-45a7-85b6-b011657e23fc"></script>
+
+</body>
+</html>

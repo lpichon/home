@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Générateur de mot de passe</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    color: #f1f5f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 2rem;
+    width: 360px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+  h1 {
+    font-size: 1.2rem;
+    margin-top: 0;
+    text-align: center;
+    color: #38bdf8;
+  }
+  .output {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+  }
+  #password {
+    flex: 1;
+    padding: 12px;
+    font-size: 1.1rem;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: #f8fafc;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+  #copyBtn {
+    background: #334155;
+    border: none;
+    border-radius: 8px;
+    color: #f1f5f9;
+    padding: 0 14px;
+    cursor: pointer;
+    font-size: 1.1rem;
+  }
+  #copyBtn:hover { background: #475569; }
+
+  .options label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+  }
+
+  .length-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  input[type="range"] { width: 100%; margin-bottom: 1rem; }
+
+  button#generateBtn {
+    width: 100%;
+    padding: 12px;
+    background: #38bdf8;
+    border: none;
+    border-radius: 8px;
+    color: #0f172a;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.2s;
+  }
+  button#generateBtn:hover { background: #0ea5e9; }
+
+  .strength {
+    margin-top: 12px;
+    height: 6px;
+    border-radius: 4px;
+    background: #334155;
+    overflow: hidden;
+  }
+  .strength-bar {
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s, background 0.3s;
+  }
+  .strength-label {
+    font-size: 0.8rem;
+    text-align: right;
+    margin-top: 4px;
+    color: #94a3b8;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🔐 Générateur de mot de passe</h1>
+
+<ul>
+  <li><a href="https://lpichon.github.io/lecteur-drive/random/api/?min=true&maj=true&longeur=92">Site web</a></li>
+  <li><a href="https://lpichon.github.io/lecteur-drive/random/api/index.html?min=true&maj=true&longeur=32">Site web</a></li>
+  <li><a href="https://lpichon.github.io/lecteur-drive/random/api/index.html">Site web</a></li>
+</ul>
+
+  <div class="output">
+    <input type="text" id="password" readonly value="">
+    <button id="copyBtn" title="Copier">📋</button>
+  </div>
+
+  <div class="length-row">
+    <span>Longueur</span>
+    <span id="lengthValue">12</span>
+  </div>
+  <input type="range" id="length" min="4" max="32" value="12">
+
+  <div class="options">
+    <label>
+      Majuscules (A-Z)
+      <input type="checkbox" id="upper" checked>
+    </label>
+    <label>
+      Minuscules (a-z)
+      <input type="checkbox" id="lower" checked>
+    </label>
+    <label>
+      Chiffres (0-9)
+      <input type="checkbox" id="digits" checked>
+    </label>
+    <label>
+      Symboles (!@#...)
+      <input type="checkbox" id="symbols">
+    </label>
+  </div>
+
+  <button id="generateBtn">🔄 Générer un mot de passe</button>
+
+  <div class="strength">
+    <div class="strength-bar" id="strengthBar"></div>
+  </div>
+  <div class="strength-label" id="strengthLabel"></div>
+</div>
+
+<script>
+const upperChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const lowerChars = "abcdefghijklmnopqrstuvwxyz";
+const digitChars = "0123456789";
+const symbolChars = "!@#$%^&*()_+-=[]{}|;:,.<>?";
+
+const lengthInput = document.getElementById('length');
+const lengthValue = document.getElementById('lengthValue');
+const upperCheck = document.getElementById('upper');
+const lowerCheck = document.getElementById('lower');
+const digitsCheck = document.getElementById('digits');
+const symbolsCheck = document.getElementById('symbols');
+const passwordField = document.getElementById('password');
+const generateBtn = document.getElementById('generateBtn');
+const copyBtn = document.getElementById('copyBtn');
+const strengthBar = document.getElementById('strengthBar');
+const strengthLabel = document.getElementById('strengthLabel');
+
+lengthInput.addEventListener('input', () => {
+  lengthValue.textContent = lengthInput.value;
+  generatePassword();
+});
+
+[upperCheck, lowerCheck, digitsCheck, symbolsCheck].forEach(cb => {
+  cb.addEventListener('change', generatePassword);
+});
+
+generateBtn.addEventListener('click', generatePassword);
+
+copyBtn.addEventListener('click', () => {
+  if (!passwordField.value) return;
+  navigator.clipboard.writeText(passwordField.value).then(() => {
+    copyBtn.textContent = "✅";
+    setTimeout(() => copyBtn.textContent = "📋", 1200);
+  });
+});
+
+function generatePassword() {
+  const length = parseInt(lengthInput.value, 10);
+  let charPool = "";
+  let guaranteed = [];
+
+  if (upperCheck.checked) { charPool += upperChars; guaranteed.push(randomChar(upperChars)); }
+  if (lowerCheck.checked) { charPool += lowerChars; guaranteed.push(randomChar(lowerChars)); }
+  if (digitsCheck.checked) { charPool += digitChars; guaranteed.push(randomChar(digitChars)); }
+  if (symbolsCheck.checked) { charPool += symbolChars; guaranteed.push(randomChar(symbolChars)); }
+
+  if (charPool === "") {
+    passwordField.value = "Sélectionnez au moins une option";
+    updateStrength(0);
+    return;
+  }
+
+  let result = [...guaranteed];
+  for (let i = result.length; i < length; i++) {
+    result.push(randomChar(charPool));
+  }
+
+  // Mélange (Fisher-Yates)
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+
+  // Si la longueur demandée est inférieure au nombre de catégories garanties
+  result = result.slice(0, length);
+
+  const password = result.join("");
+  passwordField.value = password;
+  updateStrength(computeStrength(password, charPool.length));
+}
+
+function randomChar(chars) {
+  return chars[Math.floor(Math.random() * chars.length)];
+}
+
+function computeStrength(password, poolSize) {
+  // Estimation approximative basée sur l'entropie
+  const entropy = password.length * Math.log2(poolSize || 1);
+  if (entropy < 40) return 1;
+  if (entropy < 60) return 2;
+  if (entropy < 80) return 3;
+  return 4;
+}
+
+function updateStrength(level) {
+  const configs = [
+    { width: "0%", color: "#334155", label: "" },
+    { width: "25%", color: "#ef4444", label: "Faible" },
+    { width: "50%", color: "#f59e0b", label: "Moyen" },
+    { width: "75%", color: "#38bdf8", label: "Bon" },
+    { width: "100%", color: "#22c55e", label: "Excellent" },
+  ];
+  const c = configs[level];
+  strengthBar.style.width = c.width;
+  strengthBar.style.background = c.color;
+  strengthLabel.textContent = c.label;
+}
+
+// Génération initiale
+generatePassword();
+</script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="3cd315c6-4ede-45a7-85b6-b011657e23fc"></script>
+
+</body>
+</html>

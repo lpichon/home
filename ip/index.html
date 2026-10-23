@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspecteur de Requête & Client JSON</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --text: #c9d1d9;
+      --accent: #58a6ff;
+      --border: #30363d;
+      --button-bg: #238636;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 900px;
+      width: 100%;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      color: var(--accent);
+      margin: 0;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      background-color: var(--button-bg);
+      color: white;
+      border: none;
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button.secondary {
+      background-color: #21262d;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    pre {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: #8b949e;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Inspecteur de Requête HTTP & Client</h1>
+      <div class="actions">
+        <button id="btn-copy">Copier le JSON</button>
+        <button id="btn-download" class="secondary">Télécharger (.json)</button>
+      </div>
+    </header>
+
+    <div class="status" id="status-text">Récupération des données en cours...</div>
+    <pre><code id="json-output">Chargement des données...</code></pre>
+  </div>
+
+  <script>
+    async function collectRequestData() {
+      const data = {
+        timestamp: new Date().toISOString(),
+        public_network: {},
+        http_headers: {},
+        client_browser: {
+          user_agent: navigator.userAgent,
+          language: navigator.language,
+          languages: navigator.languages,
+          platform: navigator.platform,
+          vendor: navigator.vendor,
+          cookies_enabled: navigator.cookieEnabled,
+          do_not_track: navigator.doNotTrack,
+          online_status: navigator.onLine,
+          max_touch_points: navigator.maxTouchPoints
+        },
+        screen_display: {
+          width: window.screen.width,
+          height: window.screen.height,
+          color_depth: window.screen.colorDepth,
+          pixel_ratio: window.devicePixelRatio,
+          viewport: {
+            width: window.innerWidth,
+            height: window.innerHeight
+          }
+        },
+        environment: {
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          timezone_offset_minutes: new Date().getTimezoneOffset(),
+          url: window.location.href,
+          referrer: document.referrer || null
+        }
+      };
+
+      try {
+        const headersResponse = await fetch('https://httpbin.org/headers');
+        if (headersResponse.ok) {
+          const headersJson = await headersResponse.json();
+          data.http_headers = headersJson.headers || {};
+        }
+      } catch (err) {
+        data.http_headers = { error: "Impossible de contacter l'API d'écho pour les headers." };
+      }
+
+      try {
+        const ipResponse = await fetch('https://ipapi.co/json/');
+        if (ipResponse.ok) {
+          const ipJson = await ipResponse.json();
+          data.public_network = {
+            ip: ipJson.ip,
+            x_forwarded_for: data.http_headers['X-Forwarded-For'] || data.http_headers['x-forwarded-for'] || ipJson.ip,
+            city: ipJson.city,
+            region: ipJson.region,
+            country: ipJson.country_name,
+            org_isp: ipJson.org,
+            asn: ipJson.asn
+          };
+        }
+      } catch (err) {
+        data.public_network = { error: "Impossible de récupérer les informations d'IP publique." };
+      }
+
+      return data;
+    }
+
+    function triggerDownload(jsonString) {
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `request-info-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    async function init() {
+      const outputEl = document.getElementById('json-output');
+      const statusEl = document.getElementById('status-text');
+
+      const requestData = await collectRequestData();
+      const jsonString = JSON.stringify(requestData, null, 2);
+
+      // Vérification de la présence du paramètre GET ?api
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('api')) {
+        statusEl.textContent = "Téléchargement automatique du JSON en cours...";
+        outputEl.textContent = jsonString;
+        triggerDownload(jsonString);
+        return;
+      }
+
+      // Affichage classique si pas de paramètre ?api
+      outputEl.textContent = jsonString;
+      statusEl.textContent = "Données générées avec succès.";
+
+      document.getElementById('btn-copy').addEventListener('click', () => {
+        navigator.clipboard.writeText(jsonString).then(() => {
+          alert('JSON copié dans le presse-papier !');
+        });
+      });
+
+      document.getElementById('btn-download').addEventListener('click', () => {
+        triggerDownload(jsonString);
+      });
+    }
+
+    init();
+  </script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="3cd315c6-4ede-45a7-85b6-b011657e23fc"></script>
+</body>
+</html>

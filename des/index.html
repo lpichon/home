@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lancer de Dés</title>
+  <style>
+    :root {
+      --bg-color: #f4f4f9;
+      --card-bg: #ffffff;
+      --primary: #4a90e2;
+      --primary-hover: #357abd;
+      --text: #333333;
+      --dice-bg: #ffffff;
+      --dice-border: #333333;
+      --dot-color: #2c3e50;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1rem;
+      margin: 0;
+    }
+
+    .container {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.8rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    label {
+      font-weight: 600;
+    }
+
+    input[type="number"] {
+      width: 70px;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .dice-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin: 2rem 0;
+      min-height: 90px;
+    }
+
+    /* Style d'un dé */
+    .die {
+      width: 70px;
+      height: 70px;
+      background-color: var(--dice-bg);
+      border: 3px solid var(--dice-border);
+      border-radius: 12px;
+      display: grid;
+      grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+      padding: 6px;
+      box-sizing: border-box;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      transition: transform 0.3s ease;
+    }
+
+    /* Animation au lancer */
+    .die.rolling {
+      animation: roll 0.4s ease-in-out;
+    }
+
+    @keyframes roll {
+      0% { transform: rotate(0deg) scale(0.8); }
+      50% { transform: rotate(180deg) scale(1.1); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+
+    /* Points du dé */
+    .dot {
+      width: 12px;
+      height: 12px;
+      background-color: var(--dot-color);
+      border-radius: 50%;
+      align-self: center;
+      justify-self: center;
+      visibility: hidden;
+    }
+
+    /* Positionnement des points selon les faces */
+    .face-1 .dot:nth-child(5) { visibility: visible; }
+
+    .face-2 .dot:nth-child(1),
+    .face-2 .dot:nth-child(9) { visibility: visible; }
+
+    .face-3 .dot:nth-child(1),
+    .face-3 .dot:nth-child(5),
+    .face-3 .dot:nth-child(9) { visibility: visible; }
+
+    .face-4 .dot:nth-child(1),
+    .face-4 .dot:nth-child(3),
+    .face-4 .dot:nth-child(7),
+    .face-4 .dot:nth-child(9) { visibility: visible; }
+
+    .face-5 .dot:nth-child(1),
+    .face-5 .dot:nth-child(3),
+    .face-5 .dot:nth-child(5),
+    .face-5 .dot:nth-child(7),
+    .face-5 .dot:nth-child(9) { visibility: visible; }
+
+    .face-6 .dot:nth-child(1),
+    .face-6 .dot:nth-child(3),
+    .face-6 .dot:nth-child(4),
+    .face-6 .dot:nth-child(6),
+    .face-6 .dot:nth-child(7),
+    .face-6 .dot:nth-child(9) { visibility: visible; }
+
+    .total {
+      font-size: 1.3rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Lancer de dés</h1>
+    
+    <div class="controls">
+      <label for="diceCount">Nombre de dés :</label>
+      <input type="number" id="diceCount" value="1" min="1" max="20">
+      <button id="rollBtn">Lancer !</button>
+    </div>
+
+    <div class="dice-container" id="diceContainer"></div>
+
+    <div class="total">
+      Total : <span id="totalScore">0</span>
+    </div>
+  </div>
+
+  <script>
+    const diceCountInput = document.getElementById('diceCount');
+    const rollBtn = document.getElementById('rollBtn');
+    const diceContainer = document.getElementById('diceContainer');
+    const totalScoreSpan = document.getElementById('totalScore');
+
+    function createDieElement(value) {
+      const die = document.createElement('div');
+      die.classList.add('die', `face-${value}`);
+
+      // On insère 9 emplacements pour la grille 3x3 du dé
+      for (let i = 0; i < 9; i++) {
+        const dot = document.createElement('div');
+        dot.classList.add('dot');
+        die.appendChild(dot);
+      }
+
+      return die;
+    }
+
+    function rollDice() {
+      let count = parseInt(diceCountInput.value, 10);
+      
+      // Contraintes minimales et maximales
+      if (isNaN(count) || count < 1) count = 1;
+      if (count > 20) count = 20;
+      diceCountInput.value = count;
+
+      diceContainer.innerHTML = '';
+      let total = 0;
+
+      for (let i = 0; i < count; i++) {
+        const value = Math.floor(Math.random() * 6) + 1;
+        total += value;
+
+        const die = createDieElement(value);
+        
+        // Ajout temporaire de la classe d'animation
+        die.classList.add('rolling');
+        diceContainer.appendChild(die);
+      }
+
+      totalScoreSpan.textContent = total;
+    }
+
+    // Événements
+    rollBtn.addEventListener('click', rollDice);
+    
+    // Lancer au clavier si la touche Entrée est pressée dans l'input
+    diceCountInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') rollDice();
+    });
+
+    // Premier lancer automatique au chargement
+    rollDice();
+  </script>
+</body>
+</html>
