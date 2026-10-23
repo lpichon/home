@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accès Protégé</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #000000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 380px;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        input[type="password"], input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .show-pass {
+            margin-top: 5px;
+            font-size: 13px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .debug-info {
+            margin-top: 15px;
+            font-size: 11px;
+            color: #555;
+            background: #eee;
+            padding: 8px;
+            border-radius: 4px;
+            word-break: break-all;
+            text-align: left;
+        }
+        .hidden {
+            display: none;
+        }
+        .links-container {
+            text-align: left;
+            margin-top: 20px;
+        }
+        .links-container ul {
+            padding-left: 20px;
+        }
+        .links-container li {
+            margin-bottom: 10px;
+        }
+        .links-container a {
+            color: #007BFF;
+            text-decoration: none;
+        }
+        .links-container a:hover {
+            text-decoration: underline;
+        }
+        .logout-container {
+            margin-bottom: 20px;
+            text-align: right;
+        }
+        .logout-link {
+            color: #dc3545 !important;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .logout-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Mire de mot de passe -->
+        <div id="auth-section">
+            <h2>Espace Sécurisé</h2>
+            <p>Veuillez entrer le mot de passe :</p>
+            <div class="input-group">
+                <input type="password" id="password-input" placeholder="Mot de passe">
+                <label class="show-pass">
+                    <input type="checkbox" id="toggle-pass" onclick="togglePasswordVisibility()"> Afficher le mot de passe
+                </label>
+            </div>
+            <button onclick="checkPassword()">Valider</button>
+            <div id="error-message" class="error"></div>
+            
+            <!-- Zone de débogage pour voir le hash en direct -->
+            <div class="debug-info">
+                <strong>Hash saisi :</strong> <span id="live-hash">...</span>
+            </div>
+        </div>
+
+        <div id="content-section" class="hidden">
+            <div class="logout-container">
+                <a class="logout-link" onclick="logout()">Déconnexion</a>
+            </div>
+            <h2>Liens Autorisés</h2>
+            <div class="links-container">
+                <ul>
+                    <li><a target="_blank" href="./radio/">radio</a></li>
+                    <li><a target="_blank" href="./chance/">Chance</a></li>
+                    <li><a target="_blank" href="./cine-search/">cine-search</a></li>
+                    <li><a target="_blank" href="./convecteur-temporel/">convecteur-temporel</a></li>
+                    <li><a target="_blank" href="./des/">des</a></li>
+                    <li><a target="_blank" href="./ip/">ip</a></li>
+                    <li><a target="_blank" href="./google/">google</a></li>
+                    <li><a target="_blank" href="./microsoft/">microsoft</a></li>
+                    <li><a target="_blank" href="./random/">random</a></li>
+                    <li><a target="_blank" href="./sync/">sync</a></li>
+                    <li><a href="https://example.com" target="_blank">Lien externe utile</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // VRAI Hash SHA-256 exact correspondant à "A1234"
+        const targetHash = "705196f697c5a77ce60ba9ef8441d813d77e68dcb1c091c4a314a291fa72ea17";
+
+        async function hashString(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function updateLiveHash() {
+            const inputVal = document.getElementById('password-input').value;
+            const currentHash = await hashString(inputVal);
+            document.getElementById('live-hash').textContent = currentHash;
+        }
+
+        async function checkPassword() {
+            const inputVal = document.getElementById('password-input').value;
+            const errorDiv = document.getElementById('error-message');
+            
+            const inputHash = await hashString(inputVal);
+
+            if (inputHash === targetHash) {
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('content-section').classList.remove('hidden');
+            } else {
+                errorDiv.textContent = "Mot de passe incorrect.";
+            }
+        }
+
+        function togglePasswordVisibility() {
+            const inputField = document.getElementById('password-input');
+            if (document.getElementById('toggle-pass').checked) {
+                inputField.type = 'text';
+            } else {
+                inputField.type = 'password';
+            }
+        }
+
+        // Fonction de déconnexion qui recharge la page
+        function logout() {
+            location.reload();
+        }
+
+        // Mettre à jour le hash en temps réel lors de la frappe
+        document.getElementById('password-input').addEventListener('input', updateLiveHash);
+
+        // Permettre la validation en appuyant sur "Entrée"
+        document.getElementById('password-input').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                checkPassword();
+            }
+        });
+
+        // Initialisation
+        updateLiveHash();
+    </script>
+
+</body>
+</html>
