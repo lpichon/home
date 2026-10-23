@@ -150,16 +150,13 @@
     </div>
 
     <script>
-        // VRAI Hash SHA-256 exact correspondant à "A1234"
         const targetHash = "705196f697c5a77ce60ba9ef8441d813d77e68dcb1c091c4a314a291fa72ea17";
-
         async function hashString(message) {
             const msgBuffer = new TextEncoder().encode(message);
             const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
-
         async function updateLiveHash() {
             const inputVal = document.getElementById('password-input').value;
             const currentHash = await hashString(inputVal);
