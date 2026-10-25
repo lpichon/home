@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Prompt Structuré</title>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-color: #1f2937;
+            --border-color: #d1d5db;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.95rem;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .output-box {
+            background-color: #f9fafb;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            min-height: 280px;
+            max-height: 450px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .copy-feedback {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: #10b981;
+            text-align: center;
+            height: 20px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Section Formulaire -->
+        <div class="card">
+            <h1>Configuration du Prompt</h1>
+            
+            <div class="form-group">
+                <label for="role">Rôle :</label>
+                <input type="text" id="role" placeholder="ex: Développeur Senior, Expert Cybersécurité, Architecte..." oninput="updatePrompt()">
+            </div>
+
+            <div class="form-group">
+                <label for="objectif">Objectif :</label>
+                <textarea id="objectif" placeholder="ex: Conception et développement d'un module d'authentification sécurisé..." oninput="updatePrompt()"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="specs">Spécifications techniques et fonctionnelles :</label>
+                <textarea id="specs" placeholder="ex: - Utiliser Node.js & Express&#10;- Gestion des tokens JWT&#10;- Chiffrement bcrypt des mots de passe" oninput="updatePrompt()"></textarea>
+            </div>
+        </div>
+
+        <!-- Section Aperçu et Copie -->
+        <div class="card">
+            <h1>Aperçu du Prompt Généré</h1>
+            
+            <div id="output" class="output-box"></div>
+            
+            <button onclick="copyPrompt()">Copier le Prompt</button>
+            <div id="feedback" class="copy-feedback"></div>
+        </div>
+    </div>
+
+    <script>
+        function updatePrompt() {
+            const role = document.getElementById('role').value.trim();
+            const objectif = document.getElementById('objectif').value.trim();
+            const specs = document.getElementById('specs').value.trim();
+
+            const formattedPrompt = `Rôle : ${role || '[Définir le rôle]'}
+Objectif : ${objectif || '[Définir l\'objectif]'}
+Spécifications techniques et fonctionnelles :
+${specs || '[Lister les spécifications]'}`;
+
+            document.getElementById('output').textContent = formattedPrompt;
+        }
+
+        function copyPrompt() {
+            const outputText = document.getElementById('output').textContent;
+            navigator.clipboard.writeText(outputText).then(() => {
+                const feedback = document.getElementById('feedback');
+                feedback.textContent = "Prompt copié avec succès dans le presse-papier !";
+                setTimeout(() => {
+                    feedback.textContent = "";
+                }, 3000);
+            }).catch(err => {
+                console.error('Erreur lors de la copie :', err);
+            });
+        }
+
+        // Initialisation au chargement
+        updatePrompt();
+    </script>
+</body>
+</html>
