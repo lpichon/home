@@ -152,6 +152,12 @@
 
     <script>
         const targetHash = "705196f697c5a77ce60ba9ef8441d813d77e68dcb1c091c4a314a291fa72ea17";
+        const targetHashes = [
+            "705196f697c5a77ce60ba9ef8441d813d77e68dcb1c091c4a314a291fa72ea17", // Premier mot de passe
+            "8c9a013ab70c0434313e3e881c310b9ff24aff1075255ceede3f2c239c231623", // Deuxième mot de passe
+            "781da0da23a1497259d3f6fb5e81dab1c83881ce7ad2860e0ac82a46ccecc59c"  // Troisième mot de passe
+        ];
+
         async function hashString(message) {
             const msgBuffer = new TextEncoder().encode(message);
             const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -167,10 +173,11 @@
         async function checkPassword() {
             const inputVal = document.getElementById('password-input').value;
             const errorDiv = document.getElementById('error-message');
-            
+
             const inputHash = await hashString(inputVal);
 
-            if (inputHash === targetHash) {
+            // On vérifie si le tableau contient le hash saisi
+            if (targetHashes.includes(inputHash)) {
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('content-section').classList.remove('hidden');
             } else {
