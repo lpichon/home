@@ -210,6 +210,8 @@
     <select id="stationSelect" class="station-select"></select>
     
     <p class="station-subtitle" id="stationSubtitle">Le Grand Mix</p>
+    <!-- Exemple dans votre HTML -->
+    <a id="stationWebsiteLink" href="#" target="_blank" rel="noopener noreferrer">Visiter le site web de la station</a>
 
     <!-- Zone Titre & Artiste -->
     <div class="now-playing">
@@ -236,7 +238,7 @@
 
   <audio id="audioPlayer" preload="none"></audio>
 
-  <script>
+<script>
     // AJOUTER / MODIFIER VOS STATIONS ICI
     // Remarque: metadataUrl nécessite une API qui renvoie du JSON et autorise les requêtes CORS.
     const stations = [
@@ -245,6 +247,7 @@
         name: 'Radio Nova',
         subtitle: 'Le Grand Mix',
         streamUrl: 'https://novazz.ice.infomaniak.ch/novazz-128.mp3',
+        hrefUrl: 'https://www.nova.fr',
         metadataUrl: 'https://novazz.ice.infomaniak.ch/bip/nova.json'
       },
       {
@@ -252,65 +255,72 @@
         name: 'Fun Radio',
         subtitle: 'fun',
         streamUrl: 'https://streaming-ice.audiomeans.fr/rtl/feed-funradio-mp3-128?aw_0_1st.broadcast_type=streaming&aw_0_1st.source_type=external&aw_0_1st.platform=external&aw_0_1st.media_category=fm&aw_0_1st.station=fun&aw_0_1st.program=fun&listen=webCwsBCggNCQgLDQUGBAcGBg',
-        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+        hrefUrl: 'https://www.funradio.fr',
+        metadataUrl: ''
       },
       {
         id: 'nrj',
         name: 'NRJ Radio',
         subtitle: 'nrf',
         streamUrl: 'https://n22-eu.rcs.revma.com/xh00fwuptg0uv?rj-ttl=5&rj-tok=AAABn_FuqRkAkKF1HnvVUTDjqA',
-        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+        hrefUrl: 'https://www.nrj.fr',
+        metadataUrl: ''
       },
       {
         id: 'rire-et-chansons',
         name: 'Rire et Chansons',
         subtitle: 'Rire-et-Chansons-France',
         streamUrl: 'https://streaming.nrjaudio.fm/ousguym4z85f?origine=fluxradios',
-        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+        hrefUrl: 'https://www.rireetchansons.fr',
+        metadataUrl: ''
       },
       {
         id: 'france-info',
         name: 'France Info',
         subtitle: 'France-Info-France',
         streamUrl: 'https://icecast.radiofrance.fr/franceinfo-midfi.mp3',
-        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+        hrefUrl: 'https://www.francetvinfo.fr/franceinfo/',
+        metadataUrl: ''
       },
-      
       {
         id: 'skyrock',
         name: 'Skyrock',
         subtitle: 'Skyrock-France',
         streamUrl: 'https://icecast.skyrock.net/s/natio_mp3_128k',
-        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+        hrefUrl: 'https://www.skyrock.com',
+        metadataUrl: ''
       },
       {
         id: 'ouifm',
         name: 'Oui FM',
         subtitle: 'Oui-FM-France',
         streamUrl: 'https://ouifm.ice.infomaniak.ch/ouifm-high.mp3',
-        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+        hrefUrl: 'https://www.ouifm.fr',
+        metadataUrl: ''
       },
       {
         id: 'fg',
         name: 'FG',
         subtitle: 'FG-Dance-France',
         streamUrl: 'https://n25-eu.rcs.revma.com/zfad8vm4srhvv?rj-ttl=5&rj-tok=AAABn_Fw6L8AvVogWBFEQIIytA',
-        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+        hrefUrl: 'https://www.radiofg.com',
+        metadataUrl: ''
       },
       {
         id: 'radiocontact',
         name: 'Radio Contact',
         subtitle: 'Contact',
         streamUrl: 'https://radiocontact.ice.infomaniak.ch/radiocontact-mp3-192.mp3',
-        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+        hrefUrl: 'https://www.radiocontact.be',
+        metadataUrl: ''
       },
-      
       {
         id: 'fip',
         name: 'FIP',
         subtitle: 'La radio eclectique',
         streamUrl: 'https://icecast.radiofrance.fr/fip-midfi.mp3',
-        metadataUrl: '' // Ajouter une API JSON compatible CORS si disponible
+        hrefUrl: 'https://www.radiofrance.fr/fip',
+        metadataUrl: ''
       }
     ];
 
@@ -325,6 +335,9 @@
     const stationSubtitle = document.getElementById('stationSubtitle');
     const trackTitle = document.getElementById('trackTitle');
     const trackArtist = document.getElementById('trackArtist');
+    
+    // NOUVEAU : Récupération de l'élément lien du site
+    const stationWebsiteLink = document.getElementById('stationWebsiteLink');
 
     let isPlaying = false;
     let currentStation = stations[0];
@@ -347,6 +360,18 @@
       stationSubtitle.textContent = station.subtitle;
       trackTitle.textContent = '--';
       trackArtist.textContent = '--';
+
+      // NOUVEAU : Mise à jour du lien vers le site web
+      if (stationWebsiteLink) {
+        if (station.hrefUrl) {
+          stationWebsiteLink.href = station.hrefUrl;
+          stationWebsiteLink.style.display = 'inline-block'; // ou 'block' selon votre CSS
+        } else {
+          stationWebsiteLink.href = '#';
+          stationWebsiteLink.style.display = 'none'; // Cache le lien si l'URL est vide
+        }
+      }
+
       fetchMetadata();
     }
 
@@ -361,7 +386,6 @@
       fetch(currentStation.metadataUrl)
         .then(response => response.json())
         .then(data => {
-          // Structure d'exemple adaptée pour l'API Infomaniak / Nova
           if (data && data.song) {
             trackTitle.textContent = data.song.title || 'Titre inconnu';
             trackArtist.textContent = data.song.artist || 'Artiste inconnu';
