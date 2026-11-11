@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Home Assistant - CSV</title>
+    <!-- Chargement de Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        #errorLog {
+            color: #e74c3c;
+            background: #fadbd8;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Visualiseur de Métriques Home Assistant</h1>
+    
+    <div class="card">
+        <h3>1. Charge ou colle tes données CSV</h3>
+        <p>Tu peux charger ton fichier CSV ou coller le contenu brut ci-dessous :</p>
+        <input type="file" id="csvFile" accept=".csv" style="margin-bottom: 10px;"><br>
+        <textarea id="csvData" placeholder="Colle ton CSV ici..."></textarea>
+        <br>
+        <button id="processBtn">Générer les graphiques</button>
+        <div id="errorLog"></div>
+    </div>
+
+    <!-- Zone dynamique pour injecter les graphiques par catégorie -->
+    <div id="chartsWrapper"></div>
+</div>
+
+<script>
+    // Lecture du fichier local
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            document.getElementById('csvData').value = evt.target.result;
+            processData();
+        };
+        reader.readAsText(file);
+    });
+
+    let activeCharts = [];
+
+    function processData() {
+        const errorLog = document.getElementById('errorLog');
+        errorLog.style.display = 'none';
+        errorLog.innerText = '';
+
+        let rawText = document.getElementById('csvData').value.trim();
+        if (!rawText) {
+            showError("Le champ de données est vide.");
+            return;
+        }
+
+        // Nettoyage intelligent : si des retours à la ligne coupent les lignes de données (qui commencent par une date YYYY-MM-DD),
+        // on les fusionne pour reformer la ligne complète.
+        // Expression régulière pour repérer une date au format YYYY-MM-DD HH:MM:SS au début d'une ligne
+        let cleanedText = rawText.replace(/\r?\n(?=\d{4}-\d{2}-\d{2})/g, "___SPLIT___");
+        const lines = cleanedText.split("___SPLIT___");
+
+        const categories = {};
+        let validLinesCount = 0;
+
+        lines.forEach(line => {
+            const cleanLine = line.replace(/[\r\n]+/g, " ").trim();
+            if (!cleanLine) return;
+
+            const parts = cleanLine.split(',');
+            if (parts.length >= 5) {
+                const timestamp = parts[0].trim();
+                const category = parts[1].trim();
+                const sensorName = parts[3].trim();
+                const value = parseFloat(parts[4].trim());
+
+                if (!isNaN(value)) {
+                    validLinesCount++;
+                    if (!categories[category]) {
+                        categories[category] = {
+                            timestamps: new Set(),
+                            sensors: {}
+                        };
+                    }
+                    categories[category].timestamps.add(timestamp);
+
+                    if (!categories[category].sensors[sensorName]) {
+                        categories[category].sensors[sensorName] = {};
+                    }
+                    categories[category].sensors[sensorName][timestamp] = value;
+                }
+            }
+        });
+
+        if (validLinesCount === 0) {
+            showError("Aucune ligne valide n'a pu être lue. Vérifie que tes données contiennent bien 5 colonnes par ligne.");
+            return;
+        }
+
+        // Nettoyage des anciens graphiques
+        activeCharts.forEach(chart => chart.destroy());
+        activeCharts = [];
+        const wrapper = document.getElementById('chartsWrapper');
+        wrapper.innerHTML = '';
+
+        for (const [catName, catData] of Object.entries(categories)) {
+            const sortedTimestamps = Array.from(catData.timestamps).sort();
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `<h3>Catégorie : ${catName}</h3>
+                              <div class="chart-container">
+                                  <canvas id="chart_${catName.replace(/[^a-zA-Z0-9]/g, '_')}"></canvas>
+                              </div>`;
+            wrapper.appendChild(card);
+
+            const datasets = [];
+            const colorPalette = [
+                '#3498db', '#e74c3c', '#2ecc71', '#f1c40f', 
+                '#9b59b6', '#1abc9c', '#e67e22', '#34495e'
+            ];
+            let colorIndex = 0;
+
+            for (const [sensorName, timeValues] of Object.entries(catData.sensors)) {
+                datasets.push({
+                    label: sensorName,
+                    data: sortedTimestamps.map(t => timeValues[t] !== undefined ? timeValues[t] : null),
+                    borderColor: colorPalette[colorIndex % colorPalette.length],
+                    backgroundColor: colorPalette[colorIndex % colorPalette.length],
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1
+                });
+                colorIndex++;
+            }
+
+            const canvasId = `chart_${catName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sortedTimestamps,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Date et Heure' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Valeur' }
+                        }
+                    }
+                }
+            });
+            activeCharts.push(myChart);
+        }
+    }
+
+    function showError(message) {
+        const errorLog = document.getElementById('errorLog');
+        errorLog.style.display = 'block';
+        errorLog.innerText = message;
+    }
+
+    // Association du bouton
+    document.getElementById('processBtn').addEventListener('click', processData);
+</script>
+
+</body>
+</html>
