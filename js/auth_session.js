@@ -1,4 +1,3 @@
-<script>
     // Fonction utilitaire pour lire un cookie par son nom
     function getCookie(name) {
         const value = `; ${document.cookie}`;
@@ -11,4 +10,3 @@
         // Redirection vers la page d'authentification racine
         window.location.href = "/";
     }
-</script>
