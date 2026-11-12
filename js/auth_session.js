@@ -8,5 +8,5 @@
     // Vérification de la présence du cookie de connexion
     if (getCookie("auth_session") !== "true") {
         // Redirection vers la page d'authentification racine
-        window.location.href = "/";
+        window.location.href = "/home/";
     }
