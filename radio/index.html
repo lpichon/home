@@ -237,20 +237,8 @@
   </div>
 
   <audio id="audioPlayer" preload="none"></audio>
-<script>
-    // Fonction utilitaire pour lire un cookie par son nom
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+    <script src="/home/js/auth_session.js"></script>
 
-    // Vérification de la présence du cookie de connexion
-    if (getCookie("auth_session") !== "true") {
-        // Redirection vers la page d'authentification racine
-        window.location.href = "/";
-    }
-</script> 
 <script>
     // AJOUTER / MODIFIER VOS STATIONS ICI
     // Remarque: metadataUrl nécessite une API qui renvoie du JSON et autorise les requêtes CORS.
