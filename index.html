@@ -152,9 +152,9 @@
     </div>
 
     <script>
-        const targetHash = "705196f697c5a77ce60ba9ef8441d813d77e68dcb1c091c4a314a291fa72ea17";
+        const targetHash = "e6e5605585e934e5b6a769d2c600e443a050382ba699439d34535633cf57ab5f";
         const targetHashes = [
-            "705196f697c5a77ce60ba9ef8441d813d77e68dcb1c091c4a314a291fa72ea17", // Premier mot de passe
+            "e6e5605585e934e5b6a769d2c600e443a050382ba699439d34535633cf57ab5f", // Premier mot de passe
             "8c9a013ab70c0434313e3e881c310b9ff24aff1075255ceede3f2c239c231623", // Deuxième mot de passe
             "781da0da23a1497259d3f6fb5e81dab1c83881ce7ad2860e0ac82a46ccecc59c"  // Troisième mot de passe
         ];
@@ -179,6 +179,7 @@
 
             // On vérifie si le tableau contient le hash saisi
             if (targetHashes.includes(inputHash)) {
+                document.cookie = "auth_session=true; path=/; max-age=86400; SameSite=Strict";
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('content-section').classList.remove('hidden');
             } else {
@@ -197,6 +198,7 @@
 
         // Fonction de déconnexion qui recharge la page
         function logout() {
+            document.cookie = "auth_session=; path=/; max-age=0";
             location.reload();
         }
 

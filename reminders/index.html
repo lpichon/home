@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pense-Bête Tech : Linux, Bash & Python</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-linux: #38bdf8;
+            --accent-bash: #4ade80;
+            --accent-python: #facc15;
+            --border-color: #334155;
+            --code-bg: #090d16;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            background: linear-gradient(to right, #38bdf8, #4ade80, #facc15);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background-color: var(--card-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-color);
+            border-color: var(--text-muted);
+        }
+
+        .tab-btn.active[data-target="linux"] {
+            background-color: var(--accent-linux);
+            color: #0f172a;
+            border-color: var(--accent-linux);
+        }
+
+        .tab-btn.active[data-target="bash"] {
+            background-color: var(--accent-bash);
+            color: #0f172a;
+            border-color: var(--accent-bash);
+        }
+
+        .tab-btn.active[data-target="python"] {
+            background-color: var(--accent-python);
+            color: #0f172a;
+            border-color: var(--accent-python);
+        }
+
+        .section-content {
+            display: none;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-content.active {
+            display: block;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            font-size: 1rem;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .linux-card h3 { border-color: var(--accent-linux); color: var(--accent-linux); }
+        .bash-card h3 { border-color: var(--accent-bash); color: var(--accent-bash); }
+        .python-card h3 { border-color: var(--accent-python); color: var(--accent-python); }
+
+        ul {
+            list-style: none;
+        }
+
+        li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+        }
+
+        li:last-child {
+            border-bottom: none;
+        }
+
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+        }
+
+        .desc {
+            color: var(--text-muted);
+            text-align: right;
+            max-width: 60%;
+        }
+
+        @media (max-width: 600px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Pense-Bête Développeur & SysAdmin</h1>
+        <div class="tabs">
+            <button class="tab-btn active" data-target="linux" onclick="switchTab('linux')">Linux Cheat Sheet</button>
+            <button class="tab-btn" data-target="bash" onclick="switchTab('bash')">Bash Scripting</button>
+            <button class="tab-btn" data-target="python" onclick="switchTab('python')">Python 3</button>
+        </div>
+    </header>
+
+    <!-- SECTION 1 : LINUX -->
+    <div id="linux" class="section-content active">
+        <div class="grid">
+            <div class="card linux-card">
+                <h3>📁 Fichiers & Dossiers</h3>
+                <ul>
+                    <li><code>ls -la</code><span class="desc">Lister tous les fichiers (détaillé)</span></li>
+                    <li><code>cd ..</code><span class="desc">Remonter d'un niveau</span></li>
+                    <li><code>pwd</code><span class="desc">Dossier courant</span></li>
+                    <li><code>mkdir dossier</code><span class="desc">Créer un dossier</span></li>
+                    <li><code>cp source dest</code><span class="desc">Copier</span></li>
+                    <li><code>mv source dest</code><span class="desc">Déplacer / Renommer</span></li>
+                    <li><code>rm -rf dossier</code><span class="desc">Supprimer récursivement</span></li>
+                </ul>
+            </div>
+
+            <div class="card linux-card">
+                <h3>🔒 Permissions</h3>
+                <ul>
+                    <li><code>chmod 755 file</code><span class="desc">Modifier les droits</span></li>
+                    <li><code>chown user:file</code><span class="desc">Changer le propriétaire</span></li>
+                    <li><code>umask</code><span class="desc">Masque par défaut</span></li>
+                </ul>
+            </div>
+
+            <div class="card linux-card">
+                <h3>⚙️ Processus & Système</h3>
+                <ul>
+                    <li><code>ps aux</code><span class="desc">Voir les processus</span></li>
+                    <li><code>htop</code><span class="desc">Moniteur interactif</span></li>
+                    <li><code>kill PID</code><span class="desc">Terminer un process</span></li>
+                    <li><code>df -h</code><span class="desc">Espace disque</span></li>
+                    <li><code>free -h</code><span class="desc">Mémoire RAM</span></li>
+                    <li><code>uname -a</code><span class="desc">Infos noyau</span></li>
+                </ul>
+            </div>
+
+            <div class="card linux-card">
+                <h3>🌐 Réseau & Paquets</h3>
+                <ul>
+                    <li><code>ip a</code><span class="desc">Adresses IP</span></li>
+                    <li><code>ping host</code><span class="desc">Tester connectivité</span></li>
+                    <li><code>netstat -tuln</code><span class="desc">Ports d'écoute</span></li>
+                    <li><code>sudo apt update</code><span class="desc">Mettre à jour les sources</span></li>
+                    <li><code>sudo apt install pkg</code><span class="desc">Installer un paquet</span></li>
+                </ul>
+            </div>
+
+            <div class="card linux-card">
+                <h3>🔍 Recherche & Texte</h3>
+                <ul>
+                    <li><code>find / -name file</code><span class="desc">Rechercher un fichier</span></li>
+                    <li><code>grep "mot" file</code><span class="desc">Chercher du texte</span></li>
+                    <li><code>cat file</code><span class="desc">Afficher un fichier</span></li>
+                    <li><code>tail -f file</code><span class="desc">Suivre les logs en direct</span></li>
+                </ul>
+            </div>
+
+            <div class="card linux-card">
+                <h3>📦 Archives (TAR & Zip)</h3>
+                <ul>
+                    <li><code>tar -czf archive.tar.gz dir</code><span class="desc">Créer une archive tar.gz</span></li>
+                    <li><code>tar -xzf archive.tar.gz</code><span class="desc">Extraire une archive tar.gz</span></li>
+                    <li><code>tar -cjf archive.tar.bz2 dir</code><span class="desc">Créer une archive tar.bz2</span></li>
+                    <li><code>tar -xjf archive.tar.bz2</code><span class="desc">Extraire une archive tar.bz2</span></li>
+                    <li><code>tar -tf archive.tar.gz</code><span class="desc">Lister le contenu sans l'extraire</span></li>
+                    <li><code>tar -xzf arc.tar.gz -C /rep</code><span class="desc">Extraire dans un dossier précis</span></li>
+                    <li><code>zip file.zip dir</code><span class="desc">Créer un zip</span></li>
+                    <li><code>unzip file.zip</code><span class="desc">Extraire un zip</span></li>
+                </ul>
+            </div>
+
+            <div class="card linux-card">
+                <h3>⚡ Find + Exec & Xargs</h3>
+                <ul>
+                    <li><code>find . -name "*.log" -exec rm {} \;</code><span class="desc">Supprimer via find</span></li>
+                    <li><code>find . -type f -exec chmod 644 {} +</code><span class="desc">Changer droits en masse</span></li>
+                    <li><code>cat list.txt | xargs -I {} cp {} /dest</code><span class="desc">Copier une liste</span></li>
+                    <li><code>find . -name "*.txt" | xargs grep "mot"</code><span class="desc">Recherche combinée</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 2 : BASH SCRIPTING -->
+    <div id="bash" class="section-content">
+        <div class="grid">
+            <div class="card bash-card">
+                <h3>⚡ Bases & Syntaxe</h3>
+                <ul>
+                    <li><code>#!/bin/bash</code><span class="desc">Shebang (première ligne)</span></li>
+                    <li><code>echo "texte"</code><span class="desc">Afficher un message</span></li>
+                    <li><code>nom="Valeur"</code><span class="desc">Déclarer une variable</span></li>
+                    <li><code>echo $nom</code><span class="desc">Lire une variable</span></li>
+                    <li><code>read -p "Msg: " var</code><span class="desc">Saisie utilisateur</span></li>
+                </ul>
+            </div>
+
+            <div class="card bash-card">
+                <h3>🔄 Conditions (If / Else)</h3>
+                <ul>
+                    <li><code>if [ $a == $b ]; then ... fi</code><span class="desc">Égalité chaîne</span></li>
+                    <li><code>if [ $a -eq $b ]; then ... fi</code><span class="desc">Égalité nombre</span></li>
+                    <li><code>if [ -f "file" ]; then ... fi</code><span class="desc">Si le fichier existe</span></li>
+                    <li><code>if [ -d "dir" ]; then ... fi</code><span class="desc">Si le dossier existe</span></li>
+                </ul>
+            </div>
+
+            <div class="card bash-card">
+                <h3>🔁 Boucles</h3>
+                <ul>
+                    <li><code>for i in 1 2 3; do ... done</code><span class="desc">Boucle For simple</span></li>
+                    <li><code>for f in *.txt; do ... done</code><span class="desc">Boucle sur fichiers</span></li>
+                    <li><code>while [ $n -le 5 ]; do ... done</code><span class="desc">Boucle While</span></li>
+                </ul>
+            </div>
+
+            <div class="card bash-card">
+                <h3>🛠️ Fonctions & Arguments</h3>
+                <ul>
+                    <li><code>ma_fonction() { ... }</code><span class="desc">Déclaration de fonction</span></li>
+                    <li><code>$1, $2, ...</code><span class="desc">Arguments du script / fonction</span></li>
+                    <li><code>$#</code><span class="desc">Nombre d'arguments</span></li>
+                    <li><code>$?</code><span class="desc">Code de retour dernière commande</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 3 : PYTHON 3 -->
+    <div id="python" class="section-content">
+        <div class="grid">
+            <div class="card python-card">
+                <h3>🐍 Variables & I/O</h3>
+                <ul>
+                    <li><code>print("Hello")</code><span class="desc">Afficher dans la console</span></li>
+                    <li><code>x = 5 / name = "Alice"</code><span class="desc">Variables</span></li>
+                    <li><code>input("Nom ? ")</code><span class="desc">Saisie utilisateur</span></li>
+                    <li><code>f"Nom: {name}"</code><span class="desc">F-string (interpolation)</span></li>
+                </ul>
+            </div>
+
+            <div class="card python-card">
+                <h3>🔀 Conditions</h3>
+                <ul>
+                    <li><code>if x > 0: ...</code><span class="desc">Condition simple</span></li>
+                    <li><code>elif x == 0: ...</code><span class="desc">Sinon si</span></li>
+                    <li><code>else: ...</code><span class="desc">Sinon</span></li>
+                    <li><code>and, or, not</code><span class="desc">Opérateurs logiques</span></li>
+                </ul>
+            </div>
+
+            <div class="card python-card">
+                <h3>🔄 Boucles & Listes</h3>
+                <ul>
+                    <li><code>for i in range(5): ...</code><span class="desc">Boucle For (0 à 4)</span></li>
+                    <li><code>for item in ma_liste: ...</code><span class="desc">Parcourir une liste</span></li>
+                    <li><code>while x < 10: ...</code><span class="desc">Boucle While</span></li>
+                    <li><code>ma_liste.append(val)</code><span class="desc">Ajouter à une liste</span></li>
+                </ul>
+            </div>
+
+            <div class="card python-card">
+                <h3>📦 Fonctions & Fichiers</h3>
+                <ul>
+                    <li><code>def ma_fonc(param): ...</code><span class="desc">Définir une fonction</span></li>
+                    <li><code>import math</code><span class="desc">Importer un module</span></li>
+                    <li><code>open("file.txt", "r")</code><span class="desc">Ouvrir un fichier en lecture</span></li>
+                    <li><code>with open(...) as f:</code><span class="desc">Gestion propre de fichier</span></li>
+                </ul>
+            </div>
+
+            <div class="card python-card">
+                <h3>🌐 Serveur Web & Outils</h3>
+                <ul>
+                    <li><code>python3 -m http.server 8080</code><span class="desc">Serveur sur le port 8080</span></li>
+                    <li><code>python3 -m http.server 80 --bind IP</code><span class="desc">Serveur sur IP et port</span></li>
+                    <li><code>python3 -m http.server 8080 -d /path</code><span class="desc">Serveur avec chemin cible</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/auth_session.js"></script>
+
+    <script>
+        function switchTab(targetId) {
+            // Cacher toutes les sections
+            document.querySelectorAll('.section-content').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Désactiver tous les boutons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Activer la section ciblée
+            document.getElementById(targetId).classList.add('active');
+
+            // Activer le bouton correspondant
+            document.querySelector(`.tab-btn[data-target="${targetId}"]`).classList.add('active');
+        }
+    </script>
+</body>
+</html>
